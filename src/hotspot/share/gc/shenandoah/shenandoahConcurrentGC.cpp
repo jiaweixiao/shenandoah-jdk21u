@@ -110,7 +110,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   entry_reset();
 
   // Start initial mark under STW
+  // [gc breakdown]
+  unsigned long _start_majflt = os::accumMajflt();
   vmop_entry_init_mark();
+  log_info(gc)("Majflt(Init Mark)=%ld", os::accumMajflt() - _start_majflt);
 
   {
     ShenandoahBreakpointMarkScope breakpoint_mark_scope(cause);
@@ -138,7 +141,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   }
 
   // Complete marking under STW, and start evacuation
+  // [gc breakdown]
+  _start_majflt = os::accumMajflt();
   vmop_entry_final_mark();
+  log_info(gc)("Majflt(Final Mark)=%ld", os::accumMajflt() - _start_majflt);
 
   // If GC was cancelled before final mark, then the safepoint operation will do nothing
   // and the concurrent mark will still be in progress. In this case it is safe to resume
@@ -202,7 +208,11 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
   if (heap->has_forwarded_objects()) {
     // Perform update-refs phase.
+    // [gc breakdown]
+    _start_majflt = os::accumMajflt();
     vmop_entry_init_updaterefs();
+    // [gc breakdown]
+    log_info(gc)("Majflt(Init Update Refs)=%ld", os::accumMajflt() - _start_majflt);
     entry_updaterefs();
     if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_updaterefs)) {
       return false;
@@ -214,7 +224,11 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
       return false;
     }
 
+    // [gc breakdown]
+    _start_majflt = os::accumMajflt();
     vmop_entry_final_updaterefs();
+    // [gc breakdown]
+    log_info(gc)("Majflt(Final Update Refs)=%ld", os::accumMajflt() - _start_majflt);
 
     // Update references freed up collection set, kick the cleanup to reclaim the space.
     entry_cleanup_complete();
@@ -223,7 +237,11 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
     // do not check for cancellation here because, at this point, the cycle is effectively
     // complete. If the cycle has been cancelled here, the control thread will detect it
     // on its next iteration and run a degenerated young cycle.
+    // [gc breakdown]
+    _start_majflt = os::accumMajflt();
     vmop_entry_final_roots();
+    // [gc breakdown]
+    log_info(gc)("Majflt(Final Roots)=%ld", os::accumMajflt() - _start_majflt);
     _abbreviated = true;
   }
 

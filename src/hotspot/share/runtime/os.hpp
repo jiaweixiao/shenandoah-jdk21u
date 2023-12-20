@@ -279,6 +279,9 @@ class os: AllStatic {
   static bool supports_vtime();
   static double elapsedVTime();
 
+  // [gc breakdown] Return the number of page major fault of the process.
+  static unsigned long accumMajflt();
+
   // Return current local time in a string (YYYY-MM-DD HH:MM:SS).
   // It is MT safe, but not async-safe, as reading time zone
   // information may require a lock on some platforms.
