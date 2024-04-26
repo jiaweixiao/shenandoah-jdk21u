@@ -111,10 +111,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
   // Start initial mark under STW
   // [gc breakdown]
-  unsigned long _start_majflt = os::accumMajflt();
+  GCMajfltStats gc_majflt_stats;
+  gc_majflt_stats.start();
   vmop_entry_init_mark();
-  unsigned long _end_majflt = os::accumMajflt();
-  log_info(gc)("Majflt(init mark)=%ld (%ld -> %ld)", _end_majflt - _start_majflt , _start_majflt, _end_majflt);
+  gc_majflt_stats.end_and_log("init mark");
 
   {
     ShenandoahBreakpointMarkScope breakpoint_mark_scope(cause);
@@ -143,10 +143,9 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
   // Complete marking under STW, and start evacuation
   // [gc breakdown]
-  _start_majflt = os::accumMajflt();
+  gc_majflt_stats.start();
   vmop_entry_final_mark();
-  _end_majflt = os::accumMajflt();
-  log_info(gc)("Majflt(final mark)=%ld (%ld -> %ld)", _end_majflt - _start_majflt , _start_majflt, _end_majflt);
+  gc_majflt_stats.end_and_log("final mark");
 
   // If GC was cancelled before final mark, then the safepoint operation will do nothing
   // and the concurrent mark will still be in progress. In this case it is safe to resume
@@ -211,10 +210,9 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   if (heap->has_forwarded_objects()) {
     // Perform update-refs phase.
     // [gc breakdown]
-    _start_majflt = os::accumMajflt();
+    gc_majflt_stats.start();
     vmop_entry_init_updaterefs();
-    _end_majflt = os::accumMajflt();
-    log_info(gc)("Majflt(init update refs)=%ld (%ld -> %ld)", _end_majflt - _start_majflt , _start_majflt, _end_majflt);
+    gc_majflt_stats.end_and_log("init update refs");
     entry_updaterefs();
     if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_updaterefs)) {
       return false;
@@ -227,11 +225,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
     }
 
     // [gc breakdown]
-    _start_majflt = os::accumMajflt();
+    gc_majflt_stats.start();
     vmop_entry_final_updaterefs();
-    _end_majflt = os::accumMajflt();
-    log_info(gc)("Majflt(final update refs)=%ld (%ld -> %ld)", _end_majflt - _start_majflt , _start_majflt, _end_majflt);
-
+    gc_majflt_stats.end_and_log("final update refs");
+  
     // Update references freed up collection set, kick the cleanup to reclaim the space.
     entry_cleanup_complete();
   } else {
@@ -240,10 +237,9 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
     // complete. If the cycle has been cancelled here, the control thread will detect it
     // on its next iteration and run a degenerated young cycle.
     // [gc breakdown]
-    _start_majflt = os::accumMajflt();
+    gc_majflt_stats.start();
     vmop_entry_final_roots();
-    _end_majflt = os::accumMajflt();
-    log_info(gc)("Majflt(final roots)=%ld (%ld -> %ld)", _end_majflt - _start_majflt , _start_majflt, _end_majflt);
+    gc_majflt_stats.end_and_log("final roots");
     _abbreviated = true;
   }
 

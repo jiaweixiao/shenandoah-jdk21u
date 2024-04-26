@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 
 #include "classfile/javaClasses.inline.hpp"
+#include "gc/shared/gcStats.hpp"
 #include "gc/shared/markBitMap.inline.hpp"
 #include "gc/shared/threadLocalAllocBuffer.inline.hpp"
 #include "gc/shared/continuationGCSupport.inline.hpp"

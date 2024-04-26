@@ -39,4 +39,16 @@ class GCStats : public CHeapObj<mtGC> {
   AdaptivePaddedNoZeroDevAverage*  avg_promoted() const { return _avg_promoted; }
 };
 
+// Class used to profile and save gc majflt stats
+class GCMajfltStats {
+  size_t _stt_majflt;
+
+public:
+  GCMajfltStats();
+  ~GCMajfltStats();
+
+  void start();
+  void end_and_log(const char* cause);
+};
+
 #endif // SHARE_GC_SHARED_GCSTATS_HPP

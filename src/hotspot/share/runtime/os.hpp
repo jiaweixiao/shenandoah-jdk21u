@@ -281,7 +281,7 @@ class os: AllStatic {
 
   // [gc breakdown]
   // Return the number of page major fault of the process.
-  static unsigned long accumMajflt();
+  static unsigned long get_accum_majflt();
   // The number of page major fault, cpu time in user and sys of current process.
   static void current_thread_majflt_and_cputime(long* majflt, long* user_time, long* sys_time);
   // Dump the number of page major fault, user and sys time of java and non-java threads.

@@ -1474,7 +1474,7 @@ static inline void proc_majflt_and_cputime(const char* fname, long* majflt, long
 }
 
 // Error will return 0
-unsigned long os::accumMajflt() {
+unsigned long os::get_accum_majflt() {
   return proc_majflt("/proc/self/stat");
 }
 
