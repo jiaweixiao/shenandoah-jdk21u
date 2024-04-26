@@ -1392,101 +1392,50 @@ void os::Linux::capture_initial_stack(size_t max_size) {
 
 ////////////////////////////////////////////////////////////////////////////////
 // [gc breakdown] gc breakdown support
-unsigned long os::accumMajflt() {
-  // Get the majflt field from /proc/self/stat
-  FILE *fp;
-  int pid;
-  char state;
-  int ppid;
-  int pgrp;
-  int session;
-  int nr;
-  int tpgrp;
-  unsigned long flags;
-  unsigned long minflt;
-  unsigned long cminflt;
-  unsigned long majflt;
-  unsigned long cmajflt;
-  unsigned long utime;
-  unsigned long stime;
-  long cutime;
-  long cstime;
-  long prio;
-  long nice;
-  long junk;
-  long it_real;
-  uintptr_t start;
-  uintptr_t vsize;
-  intptr_t rss;
-  uintptr_t rsslim;
-  uintptr_t scodes;
-  uintptr_t ecode;
-  uintptr_t stack_start;
-  int i;
-
-  // Code is inspired by email from Hans Boehm. /proc/self/stat 
-  // begins with current pid, followed by command name surrounded
-  // by parentheses, state, etc.
+static inline unsigned long proc_majflt(const char* fname) {
+  // Get the majflt field from /proc/<pid>/<tid>/stat
+  char *s;
   char stat[2048];
   int statlen;
+  int count;
+  long majflt;
+  char cdummy;
+  int idummy;
+  long ldummy;
+  FILE *fp;
 
-  fp = os::fopen("/proc/self/stat", "r");
-  if (fp) {
-    statlen = fread(stat, 1, 2047, fp);
-    stat[statlen] = '\0';
-    fclose(fp);
+  fp = os::fopen(fname, "r");
+  if (fp == nullptr) return 0ul;
+  statlen = fread(stat, 1, 2047, fp);
+  stat[statlen] = '\0';
+  fclose(fp);
 
-    // Skip pid and the command string. Note that we could be dealing with
-    // weird command names, e.g. user could decide to rename java launcher
-    // to "java 1.4.2 :)", then the stat file would look like
-    //                1234 (java 1.4.2 :)) R ... ...
-    // We don't really need to know the command string, just find the last
-    // occurrence of ")" and then start parsing from there. See bug 4726580.
-    char * s = strrchr(stat, ')');
+  // Skip pid and the command string. Note that we could be dealing with
+  // weird command names, e.g. user could decide to rename java launcher
+  // to "java 1.4.2 :)", then the stat file would look like
+  //                1234 (java 1.4.2 :)) R ... ...
+  // We don't really need to know the command string, just find the last
+  // occurrence of ")" and then start parsing from there. See bug 4726580.
 
-    i = 0;
-    if (s) {
-      // Skip blank chars
-      do { s++; } while (s && isspace(*s));
+  s = strrchr(stat, ')');
+  if (s == nullptr) return 0ul;
 
-#define _UFM UINTX_FORMAT
-#define _DFM INTX_FORMAT
+  // Skip blank chars
+  do { s++; } while (s && isspace(*s));
 
-      //                                     1   1   1   1   1   1   1   1   1   1   2   2    2    2    2    2    2    2    2
-      //              3  4  5  6  7  8   9   0   1   2   3   4   5   6   7   8   9   0   1    2    3    4    5    6    7    8
-      i = sscanf(s, "%c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld " _UFM _UFM _DFM _UFM _UFM _UFM _UFM,
-                  &state,          // 3  %c
-                  &ppid,           // 4  %d
-                  &pgrp,           // 5  %d
-                  &session,        // 6  %d
-                  &nr,             // 7  %d
-                  &tpgrp,          // 8  %d
-                  &flags,          // 9  %lu
-                  &minflt,         // 10 %lu
-                  &cminflt,        // 11 %lu
-                  &majflt,         // 12 %lu
-                  &cmajflt,        // 13 %lu
-                  &utime,          // 14 %lu
-                  &stime,          // 15 %lu
-                  &cutime,         // 16 %ld
-                  &cstime,         // 17 %ld
-                  &prio,           // 18 %ld
-                  &nice,           // 19 %ld
-                  &junk,           // 20 %ld
-                  &it_real,        // 21 %ld
-                  &start,          // 22 UINTX_FORMAT
-                  &vsize,          // 23 UINTX_FORMAT
-                  &rss,            // 24 INTX_FORMAT
-                  &rsslim,         // 25 UINTX_FORMAT
-                  &scodes,         // 26 UINTX_FORMAT
-                  &ecode,          // 27 UINTX_FORMAT
-                  &stack_start);   // 28 UINTX_FORMAT
-#undef _UFM
-#undef _DFM
-      return majflt;
-    }
+  count = sscanf(s,"%c %d %d %d %d %d %lu %lu %lu %lu",
+                 &cdummy, &idummy, &idummy, &idummy, &idummy, &idummy,
+                 &ldummy, &ldummy, &ldummy, &majflt);
+  if (count == 12 - 2) {
+    return majflt;
+  } else {
+    return 0ul;
   }
-  return 0ul;
+}
+
+// Error will return 0
+unsigned long os::accumMajflt() {
+  return proc_majflt("/proc/self/stat");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
