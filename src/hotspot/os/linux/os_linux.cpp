@@ -1438,6 +1438,17 @@ unsigned long os::accumMajflt() {
   return proc_majflt("/proc/self/stat");
 }
 
+void os::dump_javathread_majflt() {
+  pid_t tid;
+  char proc_name[64];
+
+  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *jt = jtiwh.next(); ) {
+    tid = jt->current()->osthread()->thread_id();
+    snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
+    log_info(gc, thread)("JavaThread %s, Majflt=%ld", jt->name(), proc_majflt(proc_name));
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // time support
 double os::elapsedVTime() {

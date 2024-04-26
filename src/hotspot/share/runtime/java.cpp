@@ -483,6 +483,8 @@ void before_exit(JavaThread* thread, bool halt) {
   // Stop concurrent GC threads
   Universe::heap()->stop();
 
+  os::dump_javathread_majflt();
+
   log_info(gc)("Majflt(exit jvm)=%ld", os::accumMajflt());
 
   // Print GC/heap related information.
