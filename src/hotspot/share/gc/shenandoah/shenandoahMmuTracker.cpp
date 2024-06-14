@@ -317,10 +317,13 @@ bool ShenandoahGenerationSizer::transfer_to_young(size_t regions) const {
   size_t bytes_to_transfer = regions * region_size_bytes;
 
   if (old_gen->free_unaffiliated_regions() < regions) {
+    log_info(gc)("transfer failure reason: old unaffilated not enough");
     return false;
   } else if (young_gen->max_capacity() + bytes_to_transfer > heap->max_size_for(young_gen)) {
+    log_info(gc)("transfer failure reason: too big young");
     return false;
   } else if (old_gen->max_capacity() - bytes_to_transfer < heap->min_size_for(old_gen)) {
+    log_info(gc)("transfer failure reason: too small old");
     return false;
   } else {
     old_gen->decrease_capacity(bytes_to_transfer);
