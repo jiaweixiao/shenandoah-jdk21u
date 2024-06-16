@@ -1484,7 +1484,7 @@ void os::current_thread_majflt_and_cputime(long* majflt, long* user_time, long* 
   proc_majflt_and_cputime(proc_name, majflt, user_time, sys_time);
 }
 
-void os::dump_thread_majflt_and_cputime() {
+void os::dump_thread_majflt_and_cputime(const char *prefix) {
   pid_t tid;
   char proc_name[64];
   long majflt, user_time, sys_time;
@@ -1493,8 +1493,8 @@ void os::dump_thread_majflt_and_cputime() {
     tid = jt->osthread()->thread_id();
     snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
     proc_majflt_and_cputime(proc_name, &majflt, &user_time, &sys_time);
-    log_info(gc, thread)("JavaThread %s(tid=%d), Majflt=%ld, user=%ldms, sys=%ldms",
-      jt->name(), tid, majflt, user_time, sys_time);
+    log_info(gc, thread)("%sJavaThread %s(tid=%d), Majflt=%ld, user=%ldms, sys=%ldms",
+      prefix, jt->name(), tid, majflt, user_time, sys_time);
   }
 
   for (NonJavaThread::Iterator njti; !njti.end(); njti.step()) {
@@ -1502,8 +1502,8 @@ void os::dump_thread_majflt_and_cputime() {
     tid = njt->osthread()->thread_id();
     snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
     proc_majflt_and_cputime(proc_name, &majflt, &user_time, &sys_time);
-    log_info(gc, thread)("NonJavaThread %s(tid=%d), Majflt=%ld, user=%ldms, sys=%ldms",
-      njt->name(), tid, majflt, user_time, sys_time);
+    log_info(gc, thread)("%sNonJavaThread %s(tid=%d), Majflt=%ld, user=%ldms, sys=%ldms",
+      prefix, njt->name(), tid, majflt, user_time, sys_time);
   }
 }
 

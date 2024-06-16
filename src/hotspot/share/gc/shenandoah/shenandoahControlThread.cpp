@@ -685,6 +685,7 @@ void ShenandoahControlThread::service_concurrent_cycle(ShenandoahHeap* heap,
                                                        GCCause::Cause& cause,
                                                        bool do_old_gc_bootstrap) {
   ShenandoahConcurrentGC gc(generation, do_old_gc_bootstrap);
+  os::dump_thread_majflt_and_cputime("beforeConcCycle-");
   if (gc.collect(cause)) {
     // Cycle is complete
     generation->record_success_concurrent(gc.abbreviated());
@@ -731,6 +732,7 @@ void ShenandoahControlThread::service_concurrent_cycle(ShenandoahHeap* heap,
                                  "At end of GC";
   }
   heap->log_heap_status(msg);
+  os::dump_thread_majflt_and_cputime("afterConcCycle-");
 }
 
 bool ShenandoahControlThread::check_cancellation_or_degen(ShenandoahGC::ShenandoahDegenPoint point) {
