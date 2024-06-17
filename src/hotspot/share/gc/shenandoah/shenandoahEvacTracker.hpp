@@ -78,6 +78,9 @@ public:
   void print_evacuations_on(outputStream* st,
                                    ShenandoahEvacuationStats* workers,
                                    ShenandoahEvacuationStats* mutators);
+  void print_evacuations_on_short(outputStream* st,
+                                   ShenandoahEvacuationStats* workers,
+                                   ShenandoahEvacuationStats* mutators);
 
   ShenandoahCycleStats flush_cycle_to_global();
 };

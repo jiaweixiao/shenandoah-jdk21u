@@ -614,6 +614,8 @@
   notproduct(int, ShenandoahCardStatsLogInterval, 50,                       \
           "Log cumulative card stats every so many remembered set or "      \
           "update refs scans")                                              \
+  product(bool, ShenandoahOnlyLogEvacStats, false,                          \
+          "Only log evacuation in gclog with stats tag")                    \
   // end of GC_SHENANDOAH_FLAGS
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

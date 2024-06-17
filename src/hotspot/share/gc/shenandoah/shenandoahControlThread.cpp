@@ -426,11 +426,16 @@ void ShenandoahControlThread::process_phase_timings(const ShenandoahHeap* heap) 
     if (lt.is_enabled()) {
       ResourceMark rm;
       LogStream ls(lt);
-      heap->phase_timings()->print_cycle_on(&ls);
-      evac_tracker->print_evacuations_on(&ls, &evac_stats.workers,
-                                              &evac_stats.mutators);
-      if (ShenandoahPacing) {
-        heap->pacer()->print_cycle_on(&ls);
+      if (ShenandoahOnlyLogEvacStats) {
+        evac_tracker->print_evacuations_on_short(&ls, &evac_stats.workers,
+                                                &evac_stats.mutators);
+      } else {
+        heap->phase_timings()->print_cycle_on(&ls);
+        evac_tracker->print_evacuations_on(&ls, &evac_stats.workers,
+                                                &evac_stats.mutators);
+        if (ShenandoahPacing) {
+          heap->pacer()->print_cycle_on(&ls);
+        }
       }
     }
   }

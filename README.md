@@ -10,3 +10,6 @@ or either of these files:
 See <https://openjdk.org/> for more information about the OpenJDK
 Community and the JDK and see <https://bugs.openjdk.org> for JDK issue
 tracking.
+
+## Additional flags
+* `-XX:+ShenandoahOnlyLogEvacStats`: only log evacuation in gclog with stats tag.
