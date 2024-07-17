@@ -29,17 +29,19 @@
 
 GCStats::GCStats() : _avg_promoted(new AdaptivePaddedNoZeroDevAverage(AdaptiveSizePolicyWeight, PromotedPadding)) {}
 
-GCMajfltStats::GCMajfltStats() : _stt_majflt(0) {
+GCMajfltStats::GCMajfltStats() : _stt_majflt(0), _stt_user_ms(0), _stt_sys_ms(0) {
 }
 
 GCMajfltStats::~GCMajfltStats() {
 }
 
 void GCMajfltStats::start() {
-  _stt_majflt = os::get_accum_majflt();
+  os::get_accum_majflt_and_cputime(&_stt_majflt, &_stt_user_ms, &_stt_sys_ms);
 }
 
 void GCMajfltStats::end_and_log(const char* cause) {
-  size_t _end_majflt = os::get_accum_majflt();
+  long _end_majflt, _end_user_ms, _end_sys_ms;
+  os::get_accum_majflt_and_cputime(&_end_majflt, &_end_user_ms, &_end_sys_ms);
   log_info(gc)("Majflt(%s)=%ld (%ld -> %ld)", cause, _end_majflt - _stt_majflt , _stt_majflt, _end_majflt);
+  log_info(gc)("PausePhase cputime(%s): user %ldms, sys %ldms", cause, _end_user_ms - _stt_user_ms, _end_sys_ms - _stt_sys_ms);
 }

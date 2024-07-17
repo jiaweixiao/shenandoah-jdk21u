@@ -1478,13 +1478,17 @@ unsigned long os::get_accum_majflt() {
   return proc_majflt("/proc/self/stat");
 }
 
+void os::get_accum_majflt_and_cputime(long* majflt, long* user_time, long* sys_time) {
+  proc_majflt_and_cputime("/proc/self/stat", majflt, user_time, sys_time);
+}
+
 void os::current_thread_majflt_and_cputime(long* majflt, long* user_time, long* sys_time) {
   char proc_name[64];
   snprintf(proc_name, 64, "/proc/self/task/%d/stat", Thread::current()->osthread()->thread_id());
   proc_majflt_and_cputime(proc_name, majflt, user_time, sys_time);
 }
 
-void os::dump_thread_majflt_and_cputime(const char *prefix) {
+void os::dump_current_thread_majflt_and_cputime(const char *prefix) {
   pid_t tid;
   char proc_name[64];
   long majflt, user_time, sys_time;
@@ -1505,6 +1509,36 @@ void os::dump_thread_majflt_and_cputime(const char *prefix) {
     log_info(gc, thread)("%sNonJavaThread %s(tid=%d), Majflt=%ld, user=%ldms, sys=%ldms",
       prefix, njt->name(), tid, majflt, user_time, sys_time);
   }
+}
+
+void os::dump_accum_thread_majflt_and_cputime(const char *prefix) {
+  pid_t tid;
+  char proc_name[64];
+  long majflt, user_time, sys_time;
+  long proc_majflt, proc_user_time, proc_sys_time;
+  long njt_majflt, njt_user_time, njt_sys_time;
+
+  // Get non-jthread stats
+  njt_majflt = njt_user_time = njt_sys_time = 0;
+  for (NonJavaThread::Iterator njti; !njti.end(); njti.step()) {
+    NonJavaThread* njt = njti.current();
+    tid = njt->osthread()->thread_id();
+    snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
+    proc_majflt_and_cputime(proc_name, &majflt, &user_time, &sys_time);
+    njt_majflt += majflt;
+    njt_user_time += user_time;
+    njt_sys_time += sys_time;
+  }
+
+  // Get process stats
+  proc_majflt_and_cputime("/proc/self/stat", &proc_majflt, &proc_user_time, &proc_sys_time);
+
+  // Get jthread stats by process - non-jthread since some mutator thread
+  // may create or exit.
+  log_info(gc)("%s JavaThread(Majflt=%ld, user=%ldms, sys=%ldms), NonJavaThread(Majflt=%ld, user=%ldms, sys=%ldms)",
+    prefix,
+    proc_majflt-njt_majflt, proc_user_time-njt_user_time, proc_sys_time-njt_sys_time,
+    njt_majflt, njt_user_time, njt_sys_time);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

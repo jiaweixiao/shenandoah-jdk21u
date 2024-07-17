@@ -282,10 +282,14 @@ class os: AllStatic {
   // [gc breakdown]
   // Return the number of page major fault of the process.
   static unsigned long get_accum_majflt();
+  // The number of page major fault, cpu time in user and sys of jvm process.
+  static void get_accum_majflt_and_cputime(long* majflt, long* user_time, long* sys_time);
   // The number of page major fault, cpu time in user and sys of current process.
   static void current_thread_majflt_and_cputime(long* majflt, long* user_time, long* sys_time);
-  // Dump the number of page major fault, user and sys time of java and non-java threads.
-  static void dump_thread_majflt_and_cputime(const char *prefix);
+  // Dump the number of page major fault, user and sys time of current java and non-java threads.
+  static void dump_current_thread_majflt_and_cputime(const char *prefix);
+  // Dump the number of page major fault, user and sys time of java and non-java threads since the start of jvm.
+  static void dump_accum_thread_majflt_and_cputime(const char *prefix);
 
   // Return current local time in a string (YYYY-MM-DD HH:MM:SS).
   // It is MT safe, but not async-safe, as reading time zone
