@@ -135,7 +135,7 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
     }
 
     // Continue concurrent mark
-    entry_mark();
+    vmop_entry_mark();
     if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_mark)) {
       return false;
     }
@@ -299,6 +299,16 @@ void ShenandoahConcurrentGC::vmop_entry_init_mark() {
   heap->try_inject_alloc_failure();
   VM_ShenandoahInitMark op(this);
   VMThread::execute(&op); // jump to entry_init_mark() under safepoint
+}
+
+void ShenandoahConcurrentGC::vmop_entry_mark() {
+  ShenandoahHeap* const heap = ShenandoahHeap::heap();
+  TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
+  ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::final_mark_gross);
+
+  heap->try_inject_alloc_failure();
+  VM_ShenandoahMark op(this);
+  VMThread::execute(&op); // jump to entry_mark under safepoint
 }
 
 void ShenandoahConcurrentGC::vmop_entry_final_mark() {

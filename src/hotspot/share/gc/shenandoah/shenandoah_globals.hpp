@@ -74,6 +74,8 @@
   product(bool, ShenandoahGenerationalCensusAtEvac, false, EXPERIMENTAL,    \
           "(Generational mode only) Object age census at evacuation, "      \
           "rather than during marking.")                                    \
+  product(bool, ShenandoahUseSTWGC, false, EXPERIMENTAL,                    \
+          "Use STW GC Instead")                                             \
                                                                             \
   product(bool, ShenandoahGenerationalAdaptiveTenuring, true, EXPERIMENTAL, \
           "(Generational mode only) Dynamically adapt tenuring age.")       \

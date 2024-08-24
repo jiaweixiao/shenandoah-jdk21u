@@ -59,10 +59,10 @@ public:
   }
 
   void work(uint worker_id) {
-    ShenandoahHeap* heap = ShenandoahHeap::heap();
+    ShenandoahHeap* heap = ShenandoahHeap::heap();ShenandoahUseSTWGC
     ShenandoahParallelWorkerSession worker_session(worker_id);
     ShenandoahWorkerTimingsTracker timer(ShenandoahPhaseTimings::conc_mark, ShenandoahPhaseTimings::ParallelMark, worker_id, true);
-    ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
+    ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers && !ShenandoahSuspendibleWorkers);
     ShenandoahReferenceProcessor* rp = heap->active_generation()->ref_processor();
     assert(rp != nullptr, "need reference processor");
     StringDedup::Requests requests;

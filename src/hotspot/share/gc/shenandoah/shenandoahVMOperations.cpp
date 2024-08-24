@@ -54,6 +54,16 @@ void VM_ShenandoahInitMark::doit() {
   _gc->entry_init_mark();
 }
 
+// void VM_ShenandoahScanRemSet::doit() {
+//   ShenandoahGCPauseMark mark(_gc_id, "Final Mark", SvcGCMarker::CONCURRENT);
+//   // _gc->entry_final_mark();
+// }
+
+void VM_ShenandoahMark::doit() {
+  ShenandoahGCPauseMark mark(_gc_id, "Init Mark", SvcGCMarker::CONCURRENT);
+  _gc->entry_mark();
+}
+
 void VM_ShenandoahFinalMarkStartEvac::doit() {
   ShenandoahGCPauseMark mark(_gc_id, "Final Mark", SvcGCMarker::CONCURRENT);
   _gc->entry_final_mark();
