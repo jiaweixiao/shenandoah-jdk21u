@@ -66,6 +66,7 @@ private:
   // Entry points to STW GC operations, these cause a related safepoint, that then
   // call the entry method below
   void vmop_entry_init_mark();
+  void vmop_entry_mark();
 
 protected:
   void vmop_entry_final_mark();
@@ -89,8 +90,10 @@ private:
   void entry_mark_roots();
   void entry_scan_remembered_set();
 
-protected:
+public:
   void entry_mark();
+
+protected:
   void entry_thread_roots();
   void entry_weak_refs();
   void entry_weak_roots();

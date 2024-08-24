@@ -79,7 +79,7 @@ public:
 //   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahScanRemSet; }
 //   const char* name()             const { return "Shenandoah Scan Remset"; }
 //   virtual void doit();
-// }
+// };
 
 class VM_ShenandoahMark: public VM_ShenandoahOperation {
 private:
@@ -91,7 +91,7 @@ public:
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahMark; }
   const char* name()             const { return "Shenandoah Mark"; }
   virtual void doit();
-}
+};
 
 class VM_ShenandoahFinalMarkStartEvac: public VM_ShenandoahOperation {
 private:
