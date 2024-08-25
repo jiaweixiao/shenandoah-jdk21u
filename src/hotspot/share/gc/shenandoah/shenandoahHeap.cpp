@@ -1701,7 +1701,7 @@ public:
   void work(uint worker_id) {
     if (_concurrent) {
       ShenandoahConcurrentWorkerSession worker_session(worker_id);
-      ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
+      ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers && !ShenandoahUseSTWGC);
       ShenandoahEvacOOMScope oom_evac_scope;
       do_work();
     } else {
@@ -1758,7 +1758,7 @@ private:
       // else, region is free, or OLD, or not in collection set, or humongous_continuation,
       // or is young humongous_start that is too young to be promoted
 
-      if (_sh->check_cancelled_gc_and_yield(_concurrent)) {
+      if (_sh->check_cancelled_gc_and_yield(_concurrent && !ShenandoahUseSTWGC)) {
         break;
       }
     }

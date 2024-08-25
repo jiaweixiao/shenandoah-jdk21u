@@ -135,7 +135,7 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
     }
 
     // Continue concurrent mark
-    if(!ShenandoahUseSTWGC){
+    if(ShenandoahUseSTWGC){
       vmop_entry_mark();
     } else {
       entry_mark();
@@ -205,7 +205,7 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   // If so, evac_in_progress would be unset by collection set preparation code.
   if (heap->is_evacuation_in_progress()) {
     // Concurrently evacuate
-    if(!ShenandoahUseSTWGC){
+    if(ShenandoahUseSTWGC){
       vmop_entry_evacuate();
     } else {
       entry_evacuate();
