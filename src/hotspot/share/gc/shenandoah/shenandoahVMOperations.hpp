@@ -94,6 +94,20 @@ public:
   virtual bool allow_nested_vm_operations() const { return true; }
 };
 
+class VM_ShenandoahEvacuation: public VM_ShenandoahOperation {
+private:
+    ShenandoahConcurrentGC* const _gc;
+public:
+  VM_ShenandoahEvacuation(ShenandoahConcurrentGC* gc) :
+    VM_ShenandoahOperation(),
+    _gc(gc) {};
+  VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahEvacuation; }
+  const char* name()             const { return "Shenandoah Evacuation"; }
+  virtual void doit();
+  virtual bool allow_nested_vm_operations() const { return true; }
+};
+
+
 class VM_ShenandoahFinalMarkStartEvac: public VM_ShenandoahOperation {
 private:
   ShenandoahConcurrentGC* const _gc;

@@ -135,7 +135,11 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
     }
 
     // Continue concurrent mark
-    vmop_entry_mark();
+    if(!ShenandoahUseSTWGC){
+      vmop_entry_mark();
+    } else {
+      entry_mark();
+    }
     if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_mark)) {
       return false;
     }
@@ -201,7 +205,11 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   // If so, evac_in_progress would be unset by collection set preparation code.
   if (heap->is_evacuation_in_progress()) {
     // Concurrently evacuate
-    entry_evacuate();
+    if(!ShenandoahUseSTWGC){
+      vmop_entry_evacuate();
+    } else {
+      entry_evacuate();
+    }
     if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_evac)) {
       return false;
     }
@@ -308,6 +316,16 @@ void ShenandoahConcurrentGC::vmop_entry_mark() {
 
   heap->try_inject_alloc_failure();
   VM_ShenandoahMark op(this);
+  VMThread::execute(&op); // jump to entry_mark under safepoint
+}
+
+void ShenandoahConcurrentGC::vmop_entry_evacuate() {
+  ShenandoahHeap* const heap = ShenandoahHeap::heap();
+  TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
+  ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::final_mark_gross);
+
+  heap->try_inject_alloc_failure();
+  VM_ShenandoahEvacuation op(this);
   VMThread::execute(&op); // jump to entry_mark under safepoint
 }
 

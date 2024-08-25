@@ -67,6 +67,7 @@ private:
   // call the entry method below
   void vmop_entry_init_mark();
   void vmop_entry_mark();
+  void vmop_entry_evacuate();
 
 protected:
   void vmop_entry_final_mark();
