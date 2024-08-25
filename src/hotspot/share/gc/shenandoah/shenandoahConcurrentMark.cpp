@@ -284,7 +284,9 @@ void ShenandoahConcurrentMark::concurrent_mark() {
     }
 
     size_t before = qset.completed_buffers_num();
-    Handshake::execute(&flush_satb);
+    SafepointSynchronize::end();
+    Handshake::execute_in_vm(&flush_satb);
+    SafepointSynchronize::begin();
     size_t after = qset.completed_buffers_num();
 
     if (before == after) {

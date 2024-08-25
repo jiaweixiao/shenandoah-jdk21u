@@ -163,7 +163,7 @@ void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint w
 
   q = queues->claim_next();
   while (q != nullptr) {
-    if (CANCELLABLE && heap->check_cancelled_gc_and_yield()) {
+    if (CANCELLABLE && heap->check_cancelled_gc_and_yield(!ShenandoahUseSTWGC)) {
       return;
     }
 
@@ -187,7 +187,7 @@ void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint w
    * Normal marking loop:
    */
   while (true) {
-    if (CANCELLABLE && heap->check_cancelled_gc_and_yield()) {
+    if (CANCELLABLE && heap->check_cancelled_gc_and_yield(!ShenandoahUseSTWGC)) {
       return;
     }
     while (satb_mq_set.completed_buffers_num() > 0) {
@@ -208,7 +208,7 @@ void ShenandoahMark::mark_loop_work(T* cl, ShenandoahLiveData* live_data, uint w
     if (work == 0) {
       // No work encountered in current stride, try to terminate.
       // Need to leave the STS here otherwise it might block safepoints.
-      ShenandoahSuspendibleThreadSetLeaver stsl(CANCELLABLE && ShenandoahSuspendibleWorkers);
+      ShenandoahSuspendibleThreadSetLeaver stsl(CANCELLABLE && ShenandoahSuspendibleWorkers && !ShenandoahUseSTWGC);
       ShenandoahTerminatorTerminator tt(heap);
       if (terminator->offer_termination(&tt)) return;
     }

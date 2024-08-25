@@ -91,6 +91,7 @@ public:
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahMark; }
   const char* name()             const { return "Shenandoah Mark"; }
   virtual void doit();
+  virtual bool allow_nested_vm_operations() const { return true; }
 };
 
 class VM_ShenandoahFinalMarkStartEvac: public VM_ShenandoahOperation {

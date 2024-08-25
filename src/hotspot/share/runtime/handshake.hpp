@@ -79,6 +79,8 @@ class Handshake : public AllStatic {
   // This version of execute() relies on a ThreadListHandle somewhere in
   // the caller's context to protect target (and we sanity check for that).
   static void execute(AsyncHandshakeClosure*  hs_cl, JavaThread* target);
+
+  static void execute_in_vm(HandshakeClosure*       hs_cl);
 };
 
 class JvmtiRawMonitor;

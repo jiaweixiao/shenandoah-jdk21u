@@ -235,8 +235,9 @@ static void log_handshake_info(jlong start_time_ns, const char* name, int target
 
 class VM_HandshakeAllThreads: public VM_Operation {
   HandshakeOperation* const _op;
+  bool _allow_nested;
  public:
-  VM_HandshakeAllThreads(HandshakeOperation* op) : _op(op) {}
+  VM_HandshakeAllThreads(HandshakeOperation* op, bool allow_nested = false) : _op(op), _allow_nested(allow_nested) {}
 
   const char* cause() const { return _op->name(); }
 
@@ -297,6 +298,8 @@ class VM_HandshakeAllThreads: public VM_Operation {
   }
 
   VMOp_Type type() const { return VMOp_HandshakeAllThreads; }
+
+  virtual bool allow_nested_vm_operations() const { return _allow_nested; }
 };
 
 void HandshakeOperation::prepare(JavaThread* current_target, Thread* executing_thread) {
@@ -347,6 +350,12 @@ void HandshakeOperation::do_handshake(JavaThread* thread) {
 void Handshake::execute(HandshakeClosure* hs_cl) {
   HandshakeOperation cto(hs_cl, nullptr, Thread::current());
   VM_HandshakeAllThreads handshake(&cto);
+  VMThread::execute(&handshake);
+}
+
+void Handshake::execute_in_vm(HandshakeClosure* hs_cl) {
+  HandshakeOperation cto(hs_cl, nullptr, Thread::current());
+  VM_HandshakeAllThreads handshake(&cto, true);
   VMThread::execute(&handshake);
 }
 
