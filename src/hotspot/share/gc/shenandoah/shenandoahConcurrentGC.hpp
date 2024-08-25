@@ -68,6 +68,7 @@ private:
   void vmop_entry_init_mark();
   void vmop_entry_mark();
   void vmop_entry_evacuate();
+  void vmop_entry_updaterefs();
 
 protected:
   void vmop_entry_final_mark();
@@ -94,6 +95,7 @@ private:
 public:
   void entry_mark();
   void entry_evacuate();
+  void entry_updaterefs();
 
 protected:
   void entry_thread_roots();
@@ -105,7 +107,6 @@ protected:
 
 private:
   void entry_update_thread_roots();
-  void entry_updaterefs();
   void entry_cleanup_complete();
 
   // Actual work for the phases

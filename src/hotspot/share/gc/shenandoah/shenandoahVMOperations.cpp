@@ -69,6 +69,11 @@ void VM_ShenandoahEvacuation::doit() {
   _gc->entry_evacuate();
 }
 
+void VM_ShenandoahUpdateRefs::doit() {
+  ShenandoahGCPauseMark mark(_gc_id, "Update Refs", SvcGCMarker::CONCURRENT);
+  _gc->entry_updaterefs();
+}
+
 void VM_ShenandoahFinalMarkStartEvac::doit() {
   ShenandoahGCPauseMark mark(_gc_id, "Final Mark", SvcGCMarker::CONCURRENT);
   _gc->entry_final_mark();

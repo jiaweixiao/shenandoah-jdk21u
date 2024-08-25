@@ -329,6 +329,16 @@ void ShenandoahConcurrentGC::vmop_entry_evacuate() {
   VMThread::execute(&op); // jump to entry_mark under safepoint
 }
 
+void ShenandoahConcurrentGC::vmop_entry_updaterefs() {
+  ShenandoahHeap* const heap = ShenandoahHeap::heap();
+  TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
+  ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::final_mark_gross);
+
+  heap->try_inject_alloc_failure();
+  VM_ShenandoahUpdateRefs op(this);
+  VMThread::execute(&op); // jump to entry_mark under safepoint
+}
+
 void ShenandoahConcurrentGC::vmop_entry_final_mark() {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
