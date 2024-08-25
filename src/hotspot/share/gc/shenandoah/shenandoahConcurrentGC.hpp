@@ -93,6 +93,7 @@ private:
 
 public:
   void entry_mark();
+  void entry_evacuate();
 
 protected:
   void entry_thread_roots();
@@ -103,7 +104,6 @@ protected:
   void entry_cleanup_early();
 
 private:
-  void entry_evacuate();
   void entry_update_thread_roots();
   void entry_updaterefs();
   void entry_cleanup_complete();
