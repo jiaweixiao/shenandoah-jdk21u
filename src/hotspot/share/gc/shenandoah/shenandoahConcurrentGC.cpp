@@ -221,7 +221,11 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
     gc_majflt_stats.start();
     vmop_entry_init_updaterefs();
     gc_majflt_stats.end_and_log("init update refs");
-    entry_updaterefs();
+    if(ShenandoahUseSTWGC){
+      vmop_entry_updaterefs();
+    } else {
+      entry_updaterefs();
+    }
     if (check_cancellation_and_abort(ShenandoahDegenPoint::_degenerated_updaterefs)) {
       return false;
     }

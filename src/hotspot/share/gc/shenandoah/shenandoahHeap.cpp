@@ -2778,7 +2778,7 @@ public:
   void work(uint worker_id) {
     if (CONCURRENT) {
       ShenandoahConcurrentWorkerSession worker_session(worker_id);
-      ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
+      ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers && !ShenandoahUseSTWGC);
       do_work<ShenandoahConcUpdateRefsClosure>(worker_id);
     } else {
       ShenandoahParallelWorkerSession worker_session(worker_id);
@@ -2847,7 +2847,7 @@ private:
       if (region_progress && ShenandoahPacing) {
         _heap->pacer()->report_updaterefs(pointer_delta(update_watermark, r->bottom()));
       }
-      if (_heap->check_cancelled_gc_and_yield(CONCURRENT)) {
+      if (_heap->check_cancelled_gc_and_yield(CONCURRENT && !ShenandoahUseSTWGC)) {
         return;
       }
       r = _regions->next();
@@ -2863,7 +2863,7 @@ private:
       struct ShenandoahRegionChunk assignment;
       RememberedScanner* scanner = _heap->card_scan();
 
-      while (!_heap->check_cancelled_gc_and_yield(CONCURRENT) && _work_chunks->next(&assignment)) {
+      while (!_heap->check_cancelled_gc_and_yield(CONCURRENT && !ShenandoahUseSTWGC) && _work_chunks->next(&assignment)) {
         // Keep grabbing next work chunk to process until finished, or asked to yield
         ShenandoahHeapRegion* r = assignment._r;
         if (r->is_active() && !r->is_cset() && r->is_old()) {
