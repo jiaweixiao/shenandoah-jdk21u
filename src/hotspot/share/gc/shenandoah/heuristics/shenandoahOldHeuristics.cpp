@@ -554,6 +554,30 @@ bool ShenandoahOldHeuristics::should_start_gc() {
     return false;
   }
 
+  {
+    size_t capacity = _space_info->soft_max_capacity();
+    size_t available = _space_info->soft_available();
+    size_t allocated = _space_info->bytes_allocated_since_gc_start();
+
+    log_debug(gc)("should_start_gc (%s)? available: " SIZE_FORMAT ", soft_max_capacity: " SIZE_FORMAT
+                  ", allocated: " SIZE_FORMAT,
+                  _space_info->name(), available, capacity, allocated);
+
+    // Track allocation rate even if we decide to start a cycle for other reasons.
+    double rate = _allocation_rate.sample(allocated);
+    _last_trigger = OTHER;
+
+    size_t min_threshold = min_free_threshold();
+    if (available < min_threshold) {
+      log_info(gc)("Trigger (%s): Free (" SIZE_FORMAT "%s) is below minimum threshold (" SIZE_FORMAT "%s)", _space_info->name(),
+                  byte_size_in_proper_unit(available), proper_unit_for_byte_size(available),
+                  byte_size_in_proper_unit(min_threshold), proper_unit_for_byte_size(min_threshold));
+      return true;
+    }
+  }
+
+
+
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (_cannot_expand_trigger) {
     size_t old_gen_capacity = _old_generation->max_capacity();
