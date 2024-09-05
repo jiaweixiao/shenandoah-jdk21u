@@ -77,9 +77,13 @@ void ShenandoahRegulatorThread::regulate_concurrent_cycles() {
         }
       } else {
         if (_young_heuristics->should_start_gc()) {
-          if (start_old_cycle()) {
-            log_info(gc)("Heuristics request for old collection accepted");
-          } else if (request_concurrent_gc(YOUNG)) {
+          if (start_active_global_cycle()){
+            log_info(gc)("Heuristics request for global collection accepted");
+          }
+          // else if (start_old_cycle()) {
+          //   log_info(gc)("Heuristics request for old collection accepted");
+          // } 
+          else if (request_concurrent_gc(YOUNG)) {
             log_info(gc)("Heuristics request for young collection accepted");
           }
         }
@@ -155,6 +159,41 @@ bool ShenandoahRegulatorThread::start_old_cycle() {
       && _old_heuristics->should_start_gc()
       && request_concurrent_gc(OLD);
 }
+
+bool ShenandoahRegulatorThread::start_active_global_cycle() {
+  // TODO: These first two checks might be vestigial
+
+  bool should_do_global_gc = false;
+  {
+    size_t capacity = _space_info->soft_max_capacity();
+    size_t available = _space_info->soft_available();
+    size_t allocated = _space_info->bytes_allocated_since_gc_start();
+
+    log_debug(gc)("should_start_gc (%s)? available: " SIZE_FORMAT ", soft_max_capacity: " SIZE_FORMAT
+                  ", allocated: " SIZE_FORMAT,
+                  _space_info->name(), available, capacity, allocated);
+
+    // Track allocation rate even if we decide to start a cycle for other reasons.
+    // double rate = _allocation_rate.sample(allocated);
+    // _last_trigger = OTHER;
+
+    size_t min_threshold = _space_info->max_capacity() / 100 * ShenandoahMinFreeThreshold;
+    if (available < min_threshold) {
+      log_info(gc)("Trigger (%s): Free (" SIZE_FORMAT "%s) is below minimum threshold (" SIZE_FORMAT "%s)", _space_info->name(),
+                  byte_size_in_proper_unit(available), proper_unit_for_byte_size(available),
+                  byte_size_in_proper_unit(min_threshold), proper_unit_for_byte_size(min_threshold));
+      should_do_global_gc = true;
+    }
+  }
+
+  return should_do_global_gc && request_concurrent_gc(ShenandoahControlThread::select_global_generation());
+
+  // return !ShenandoahHeap::heap()->doing_mixed_evacuations()
+  //     && !ShenandoahHeap::heap()->collection_set()->has_old_regions()
+  //     && _old_heuristics->should_start_gc()
+  //     && request_concurrent_gc(GLOBAL);
+}
+
 
 bool ShenandoahRegulatorThread::request_concurrent_gc(ShenandoahGenerationType generation) {
   double now = os::elapsedTime();

@@ -72,6 +72,7 @@ class ShenandoahRegulatorThread: public ConcurrentGCThread {
   bool start_old_cycle();
   bool start_young_cycle();
   bool start_global_cycle();
+  bool start_active_global_cycle();
 
   bool should_unload_classes();
 
