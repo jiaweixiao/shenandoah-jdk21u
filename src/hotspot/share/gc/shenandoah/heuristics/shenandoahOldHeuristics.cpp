@@ -564,10 +564,10 @@ bool ShenandoahOldHeuristics::should_start_gc() {
                   _space_info->name(), available, capacity, allocated);
 
     // Track allocation rate even if we decide to start a cycle for other reasons.
-    double rate = _allocation_rate.sample(allocated);
-    _last_trigger = OTHER;
+    // double rate = _allocation_rate.sample(allocated);
+    // _last_trigger = OTHER;
 
-    size_t min_threshold = min_free_threshold();
+    size_t min_threshold = _space_info->max_capacity() / 100 * ShenandoahMinFreeThreshold;
     if (available < min_threshold) {
       log_info(gc)("Trigger (%s): Free (" SIZE_FORMAT "%s) is below minimum threshold (" SIZE_FORMAT "%s)", _space_info->name(),
                   byte_size_in_proper_unit(available), proper_unit_for_byte_size(available),
