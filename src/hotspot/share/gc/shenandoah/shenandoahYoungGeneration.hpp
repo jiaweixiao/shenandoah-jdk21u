@@ -72,7 +72,17 @@ public:
     return _old_gen_task_queues != nullptr;
   }
 
+  size_t soft_max_capacity_for_gc() const override { 
+    if(YoungGCMaxCapacity != 0){
+      return MIN2(YoungGCMaxCapacity, soft_max_capacity()); 
+    } else {
+      return soft_max_capacity();
+    }
+  }
+
   size_t available() const override;
+
+  size_t available_for_gc() const override;
 
   // Do not override available_with_reserve() because that needs to see memory reserved for Collector
 

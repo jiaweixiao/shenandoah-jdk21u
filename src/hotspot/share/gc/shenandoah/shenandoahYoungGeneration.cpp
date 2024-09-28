@@ -98,6 +98,21 @@ size_t ShenandoahYoungGeneration::available() const {
   return MIN2(available, ShenandoahHeap::heap()->free_set()->available());
 }
 
+size_t ShenandoahYoungGeneration::available_for_gc() const {
+  // The collector reserve may eat into what the mutator is allowed to use. Make sure we are looking
+  // at what is available to the mutator when reporting how much memory is available.
+
+  if(YoungGCMaxCapacity != 0){
+    size_t capacity = soft_max_capacity_for_gc();
+    size_t in_use = used() + get_humongous_waste();
+    size_t available = in_use > capacity ? 0 : capacity - in_use;
+    size_t actual_available = MIN2(available, ShenandoahHeap::heap()->free_set()->available());
+    return actual_available;
+  } else {
+    return available();
+  }
+}
+
 size_t ShenandoahYoungGeneration::soft_available() const {
   size_t available = this->ShenandoahGeneration::soft_available();
   return MIN2(available, ShenandoahHeap::heap()->free_set()->available());

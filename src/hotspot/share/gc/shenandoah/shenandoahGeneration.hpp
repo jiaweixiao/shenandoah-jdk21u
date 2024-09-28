@@ -126,12 +126,14 @@ private:
   virtual ShenandoahHeuristics* initialize_heuristics(ShenandoahMode* gc_mode);
 
   size_t soft_max_capacity() const override { return _soft_max_capacity; }
+  virtual size_t soft_max_capacity_for_gc() const override { return soft_max_capacity(); }
   size_t max_capacity() const override      { return _max_capacity; }
   virtual size_t used_regions() const;
   virtual size_t used_regions_size() const;
   virtual size_t free_unaffiliated_regions() const;
   size_t used() const override { return _used; }
   size_t available() const override;
+  virtual size_t available_for_gc() const override { return available(); };
   size_t available_with_reserve() const;
   size_t used_including_humongous_waste() const {
     return used() + get_humongous_waste();
