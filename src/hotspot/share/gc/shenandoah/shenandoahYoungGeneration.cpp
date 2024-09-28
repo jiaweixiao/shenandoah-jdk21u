@@ -102,7 +102,7 @@ size_t ShenandoahYoungGeneration::available_for_gc() const {
   // The collector reserve may eat into what the mutator is allowed to use. Make sure we are looking
   // at what is available to the mutator when reporting how much memory is available.
 
-  if(YoungGCMaxCapacity != 0){
+  if(ShenandoahYoungGCMaxCapacity != 0){
     size_t capacity = soft_max_capacity_for_gc();
     size_t in_use = used() + get_humongous_waste();
     size_t available = in_use > capacity ? 0 : capacity - in_use;

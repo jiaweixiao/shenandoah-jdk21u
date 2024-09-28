@@ -573,6 +573,10 @@
          "to prevent starvation of the old collector. Setting this to "     \
          "0 will allow back to back young collections to run during old "   \
          "marking.")                                                        \
+  product(size_t, ShenandoahYoungGCMaxCapacity, 0, EXPERIMENTAL,            \
+          "Maximum new generation size (in bytes), max_uintx means set "    \
+          "ergonomically")                                                  \
+          range(0, max_uintx)                                               \
   // end of GC_SHENANDOAH_FLAGS
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

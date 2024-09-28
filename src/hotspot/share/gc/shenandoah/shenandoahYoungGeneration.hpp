@@ -73,8 +73,8 @@ public:
   }
 
   size_t soft_max_capacity_for_gc() const override { 
-    if(YoungGCMaxCapacity != 0){
-      return MIN2(YoungGCMaxCapacity, soft_max_capacity()); 
+    if(ShenandoahYoungGCMaxCapacity != 0){
+      return MIN2(ShenandoahYoungGCMaxCapacity, soft_max_capacity()); 
     } else {
       return soft_max_capacity();
     }
