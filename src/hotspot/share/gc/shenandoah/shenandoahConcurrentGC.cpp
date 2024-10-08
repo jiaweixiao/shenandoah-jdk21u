@@ -288,6 +288,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
                        byte_size_in_proper_unit(old_available), proper_unit_for_byte_size(old_available),
                        byte_size_in_proper_unit(young_available), proper_unit_for_byte_size(young_available));
   }
+
+  size_t young_used = young_gen->used();
+  ShenandoahWorkerPolicy::set_young_used(young_used);
+  ShenandoahWorkerPolicy::update_conc_thread_num();
   return true;
 }
 

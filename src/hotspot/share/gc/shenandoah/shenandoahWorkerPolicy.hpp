@@ -42,6 +42,10 @@ private:
   static uint _prev_conc_cleanup;
   static uint _prev_conc_reset;
 
+  static size_t _young_used;
+  static size_t _prev_young_used;
+  static size_t _prev_conc_workers;
+
 public:
   // Calculate the number of workers for initial marking
   static uint calc_workers_for_init_marking();
@@ -81,6 +85,15 @@ public:
 
   // Calculate workers for concurrent reset
   static uint calc_workers_for_conc_reset();
+
+  static uint calc_active_conc_workers(uintx total_workers,
+                                            uintx active_workers,
+                                            uintx application_workers);
+
+  static void set_young_used(size_t young_used) {
+    _prev_young_used = _young_used;
+    _young_used = young_used;  
+  }
 };
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHWORKERPOLICY_HPP

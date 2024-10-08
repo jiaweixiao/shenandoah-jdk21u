@@ -56,7 +56,7 @@ uint ShenandoahWorkerPolicy::calc_workers_for_init_marking() {
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_marking() {
   uint active_workers = (_prev_conc_marking == 0) ?  ConcGCThreads : _prev_conc_marking;
   _prev_conc_marking =
-    WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+    ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                            active_workers,
                                            Threads::number_of_non_daemon_threads());
   return _prev_conc_marking;
@@ -65,7 +65,7 @@ uint ShenandoahWorkerPolicy::calc_workers_for_conc_marking() {
 uint ShenandoahWorkerPolicy::calc_workers_for_rs_scanning() {
   uint active_workers = (_prev_conc_rs_scanning == 0) ? ConcGCThreads : _prev_conc_rs_scanning;
   _prev_conc_rs_scanning =
-    WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+    ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                            active_workers,
                                            Threads::number_of_non_daemon_threads());
   return _prev_conc_rs_scanning;
@@ -80,7 +80,7 @@ uint ShenandoahWorkerPolicy::calc_workers_for_final_marking() {
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_refs_processing() {
   uint active_workers = (_prev_conc_refs_proc == 0) ? ConcGCThreads : _prev_conc_refs_proc;
   _prev_conc_refs_proc =
-    WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+    ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                            active_workers,
                                            Threads::number_of_non_daemon_threads());
   return _prev_conc_refs_proc;
@@ -90,7 +90,7 @@ uint ShenandoahWorkerPolicy::calc_workers_for_conc_refs_processing() {
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_root_processing() {
   uint active_workers = (_prev_conc_root_proc == 0) ? ConcGCThreads : _prev_conc_root_proc;
   _prev_conc_root_proc =
-          WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+          ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                                  active_workers,
                                                  Threads::number_of_non_daemon_threads());
   return _prev_conc_root_proc;
@@ -100,7 +100,7 @@ uint ShenandoahWorkerPolicy::calc_workers_for_conc_root_processing() {
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_evac() {
   uint active_workers = (_prev_conc_evac == 0) ? ConcGCThreads : _prev_conc_evac;
   _prev_conc_evac =
-    WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+    ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                            active_workers,
                                            Threads::number_of_non_daemon_threads());
   return _prev_conc_evac;
@@ -130,7 +130,7 @@ uint ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated() {
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_update_ref() {
   uint active_workers = (_prev_conc_update_ref == 0) ? ConcGCThreads : _prev_conc_update_ref;
   _prev_conc_update_ref =
-    WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+    ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                            active_workers,
                                            Threads::number_of_non_daemon_threads());
   return _prev_conc_update_ref;
@@ -149,7 +149,7 @@ uint ShenandoahWorkerPolicy::calc_workers_for_final_update_ref() {
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_cleanup() {
   uint active_workers = (_prev_conc_cleanup == 0) ? ConcGCThreads : _prev_conc_cleanup;
   _prev_conc_cleanup =
-          WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+          ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                                  active_workers,
                                                  Threads::number_of_non_daemon_threads());
   return _prev_conc_cleanup;
@@ -158,8 +158,34 @@ uint ShenandoahWorkerPolicy::calc_workers_for_conc_cleanup() {
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_reset() {
   uint active_workers = (_prev_conc_reset == 0) ? ConcGCThreads : _prev_conc_reset;
   _prev_conc_reset =
-          WorkerPolicy::calc_active_conc_workers(ConcGCThreads,
+          ShenandoahWorkerPolicy::calc_active_conc_workers(ConcGCThreads,
                                                  active_workers,
                                                  Threads::number_of_non_daemon_threads());
   return _prev_conc_reset;
+}
+
+void ShenandoahWorkerPolicy::update_conc_thread_num(){
+  uint new_conc_workers = _prev_conc_workers;
+  if (_young_used > _prev_young_used){
+    if(_young_used - _prev_young_used > 512 * M){
+      new_conc_workers *= 2;
+    } else {
+      new_conc_workers += 1;
+    }
+  } else {
+    new_conc_workers -= 2;
+  }
+
+  _prev_conc_workers = MAX2(5, MIN2(new_conc_workers, ConcGCThreads));
+}
+
+
+uint ShenandoahWorkerPolicy::calc_active_conc_workers(uintx total_workers,
+                                            uintx active_workers,
+                                            uintx application_workers) {
+  if(_prev_conc_workers == 0){
+    _prev_conc_workers = ConcGCThreads;
+  }
+  log_info(gc)("Conc thread num: %u", _prev_conc_workers);
+  return _prev_conc_workers;
 }
