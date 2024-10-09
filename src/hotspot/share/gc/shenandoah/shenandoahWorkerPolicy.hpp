@@ -44,7 +44,7 @@ private:
 
   static size_t _young_used;
   static size_t _prev_young_used;
-  static size_t _prev_conc_workers;
+  static uint _prev_conc_workers;
 
 public:
   // Calculate the number of workers for initial marking
@@ -94,6 +94,8 @@ public:
     _prev_young_used = _young_used;
     _young_used = young_used;  
   }
+
+  static void update_conc_thread_num();
 };
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHWORKERPOLICY_HPP

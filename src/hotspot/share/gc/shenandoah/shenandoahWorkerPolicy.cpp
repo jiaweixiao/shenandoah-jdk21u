@@ -42,6 +42,9 @@ uint ShenandoahWorkerPolicy::_prev_conc_update_ref = 0;
 uint ShenandoahWorkerPolicy::_prev_par_update_ref  = 0;
 uint ShenandoahWorkerPolicy::_prev_conc_cleanup    = 0;
 uint ShenandoahWorkerPolicy::_prev_conc_reset      = 0;
+size_t ShenandoahWorkerPolicy::_young_used         = 0;
+size_t ShenandoahWorkerPolicy::_prev_young_used    = 0;
+uint   ShenandoahWorkerPolicy::_prev_conc_workers  = 0;
 
 uint ShenandoahWorkerPolicy::calc_workers_for_init_marking() {
   uint active_workers = (_prev_par_marking == 0) ? ParallelGCThreads : _prev_par_marking;
@@ -176,7 +179,7 @@ void ShenandoahWorkerPolicy::update_conc_thread_num(){
     new_conc_workers -= 2;
   }
 
-  _prev_conc_workers = MAX2(5, MIN2(new_conc_workers, ConcGCThreads));
+  _prev_conc_workers = MAX2(5U, MIN2(new_conc_workers, ConcGCThreads));
 }
 
 
