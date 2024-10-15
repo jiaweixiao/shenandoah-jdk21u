@@ -216,6 +216,7 @@ bool ShenandoahAdaptiveHeuristics::should_start_gc() {
 
   // Track allocation rate even if we decide to start a cycle for other reasons.
   double rate = _allocation_rate.sample(allocated);
+  log_info(gc)("Sampled Allocation rate: %lf", rate);
   _last_trigger = OTHER;
 
   size_t min_threshold = min_free_threshold();
