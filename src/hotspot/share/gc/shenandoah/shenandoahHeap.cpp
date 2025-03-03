@@ -421,6 +421,7 @@ jint ShenandoahHeap::initialize() {
     // We are initializing free set.  We ignore cset region tallies.
     size_t first_old, last_old, num_old;
     _free_set->prepare_to_rebuild(young_cset_regions, old_cset_regions, first_old, last_old, num_old);
+    log_info(gc)("heap initialize: young cset %lu, old cset %lu, num old %lu", young_cset_regions, old_cset_regions, num_old);
     _free_set->rebuild(young_cset_regions, old_cset_regions);
   }
 
@@ -571,6 +572,10 @@ void ShenandoahHeap::initialize_heuristics_generations() {
     _old_generation->initialize_heuristics(_gc_mode);
   }
   _evac_tracker = new ShenandoahEvacuationTracker(mode()->is_generational());
+
+  ShenandoahGeneration *young = _young_generation, *old = _old_generation;
+  log_info(gc)("initial capacity young_used_regions %lu, young_max %lu, young_soft_max %lu", young->used_regions(), young->max_capacity(), young->soft_max_capacity());
+  log_info(gc)("initial capacity old_used_regions %lu, old_max %lu, old_soft_max %lu", old->used_regions(), old->max_capacity(), old->soft_max_capacity());
 }
 
 #ifdef _MSC_VER
@@ -3070,6 +3075,7 @@ void ShenandoahHeap::rebuild_free_set(bool concurrent) {
   size_t young_cset_regions, old_cset_regions;
   size_t first_old_region, last_old_region, old_region_count;
   _free_set->prepare_to_rebuild(young_cset_regions, old_cset_regions, first_old_region, last_old_region, old_region_count);
+  log_info(gc)("new young trash: %lu, new old trash: %lu", young_cset_regions, old_cset_regions);
   // If there are no old regions, first_old_region will be greater than last_old_region
   assert((first_old_region > last_old_region) ||
          ((last_old_region + 1 - first_old_region >= old_region_count) &&
@@ -3098,7 +3104,7 @@ void ShenandoahHeap::rebuild_free_set(bool concurrent) {
     // within partially consumed regions of memory.
   }
   // Rebuild free set based on adjusted generation sizes.
-  _free_set->rebuild(young_cset_regions, old_cset_regions);
+  _free_set->rebuild_simple(young_cset_regions, old_cset_regions);
 
   if (mode()->is_generational() && (ShenandoahGenerationalHumongousReserve > 0)) {
     size_t old_region_span = (first_old_region <= last_old_region)? (last_old_region + 1 - first_old_region): 0;
