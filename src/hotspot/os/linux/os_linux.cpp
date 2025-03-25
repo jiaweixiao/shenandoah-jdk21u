@@ -3054,6 +3054,13 @@ void os::pd_free_memory(char *addr, size_t bytes, size_t alignment_hint) {
   }
 }
 
+void os::free_page_frames(bool lazy, char *addr, size_t bytes) {
+  if (lazy)
+    ::madvise(addr, bytes, MADV_FREE);
+  else
+    ::madvise(addr, bytes, MADV_DONTNEED);
+}
+
 void os::numa_make_global(char *addr, size_t bytes) {
   Linux::numa_interleave_memory(addr, bytes);
 }
