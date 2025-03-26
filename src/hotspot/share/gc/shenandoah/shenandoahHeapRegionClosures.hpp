@@ -102,11 +102,12 @@ private:
   uint _num_workers;
   uint* _dead_pages_worker;
 
-  void account_dead_ranges(ShenandoahHeapRegion* r, HeapWord* start, HeapWord* limit) {
+  void account_dead_ranges(ShenandoahHeapRegion* r, HeapWord* bottom, HeapWord* limit) {
     assert(_worker_id < _num_workers, "Dead Range worker id overflow");
     // [madv free]
     // Find dead page in region.
     // Here each worker claims one of the old generation regions.
+    HeapWord* start = bottom;
 
     // Ceiling of number of pages.
     uint num_pages = (((uintptr_t)limit) - ((uintptr_t)start) + 4096 - 1) >> 12;
@@ -130,9 +131,9 @@ private:
         assert(obj->klass() != nullptr, "klass should not be nullptr");
         // Obj size in heap word.
         obj_size = obj->size();
-        start_id = (((uintptr_t)start) - ((uintptr_t)r->bottom())) >> 12;
+        start_id = (((uintptr_t)start) - ((uintptr_t)bottom)) >> 12;
         // Ceiling of id
-        end_id = (((uintptr_t)start) - ((uintptr_t)r->bottom()) + (obj_size << LogHeapWordSize) + 4096 - 1) >> 12;
+        end_id = (((uintptr_t)start) - ((uintptr_t)bottom) + (obj_size << LogHeapWordSize) + 4096 - 1) >> 12;
         assert(start_id != end_id, "Dead Pages of Region 1");
         for (; start_id < end_id; start_id++) {
           bm.set_bit(start_id);
@@ -166,6 +167,13 @@ private:
           assert(log2i(range_len) < (int)_dead_ranges_len, "dead range len");
           // log_info(gc)("Dead Range worker id %u", _worker_id);
           _dead_ranges_log2_worker[_worker_id][log2i(range_len)] += 1;
+          if (UseMadvFreeDeadPage) { // Free with madv free
+            os::free_page_frames(true,
+                ((char*)bottom) + (range_start << 12), range_len << 12);
+          } else if (UseMadvDontneedDeadPage) { // Free with madv dontneed
+            os::free_page_frames(false,
+                ((char*)bottom) + (range_start << 12), range_len << 12);
+          }
         }
         is_prev_dead = false;
       }
