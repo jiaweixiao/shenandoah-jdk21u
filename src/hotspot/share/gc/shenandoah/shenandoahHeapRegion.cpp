@@ -314,6 +314,20 @@ void ShenandoahHeapRegion::make_trash() {
     case _regular:
       // Immediate region reclaim
       set_state(_trash);
+      if (UseMadvFree)
+        os::free_page_frames(true, (char*)_bottom,
+                ShenandoahHeapRegion::RegionSizeBytes);
+      else if (UseMadvFreePage > 0) {
+        uint step = 4096 * UseMadvFreePage;
+        char* addr = (char*)_bottom;
+        char* last_page = (char*)_end - step;
+        while(addr <= last_page) {
+          os::free_page_frames(true, (char*)addr, step);
+          addr += step;
+        }
+      } else if (UseMadvDontneed)
+        os::free_page_frames(false, (char*)_bottom,
+                ShenandoahHeapRegion::RegionSizeBytes);
       return;
     default:
       report_illegal_transition("trashing");
