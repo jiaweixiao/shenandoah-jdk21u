@@ -37,11 +37,13 @@ ShenandoahFinalMarkUpdateRegionStateClosure::ShenandoahFinalMarkUpdateRegionStat
   _ctx(ctx), _lock(ShenandoahHeap::heap()->lock()) {
   if (UseProfileDeadPageInOld && _ctx != nullptr) {
     _worker_id = 0;
-    _dead_pages = 0;
-    // bins: 2^0, ..., 2^log2i(4KB pages per region)
-    _dead_ranges_len = log2i(ShenandoahHeapRegion::region_size_bytes() >> 12) + 1;
     _num_workers = ShenandoahHeap::heap()->workers()->active_workers();
     // log_info(gc)("Dead Ranges num workers %u", _num_workers);
+    _dead_pages_worker = NEW_C_HEAP_ARRAY(uint, _num_workers, mtGC);
+    memset(_dead_pages_worker, 0, sizeof(uint) * _num_workers);
+
+    // bins: 2^0, ..., 2^log2i(4KB pages per region)
+    _dead_ranges_len = log2i(ShenandoahHeapRegion::region_size_bytes() >> 12) + 1;
     _dead_ranges_log2_worker = NEW_C_HEAP_ARRAY(uint*, _num_workers, mtGC);
 
     for (uint i = 0; i < _num_workers; i++) {
@@ -54,6 +56,7 @@ ShenandoahFinalMarkUpdateRegionStateClosure::ShenandoahFinalMarkUpdateRegionStat
 ShenandoahFinalMarkUpdateRegionStateClosure::~ShenandoahFinalMarkUpdateRegionStateClosure() {
   if (UseProfileDeadPageInOld && _ctx != nullptr) {
     dump_dead_ranges();
+    FREE_C_HEAP_ARRAY(uint, _dead_pages_worker);
     for (uint i = 0; i < _num_workers; i++) {
       FREE_C_HEAP_ARRAY(uint, _dead_ranges_log2_worker[i]);
     }
