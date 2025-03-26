@@ -113,7 +113,10 @@ public:
 };
 
 class ShenandoahHeapRegionClosure : public StackObj {
+protected:
+  uint _worker_id;
 public:
+  void set_worker(uint id) { _worker_id = id; }
   virtual void heap_region_do(ShenandoahHeapRegion* r) = 0;
   virtual bool is_thread_safe() { return false; }
 };

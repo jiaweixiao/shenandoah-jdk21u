@@ -1932,6 +1932,7 @@ public:
 
       for (size_t i = cur; i < end; i++) {
         ShenandoahHeapRegion* current = _heap->get_region(i);
+        _blk->set_worker(worker_id);
         _blk->heap_region_do(current);
       }
     }
