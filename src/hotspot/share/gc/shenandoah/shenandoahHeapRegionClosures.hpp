@@ -100,7 +100,7 @@ private:
   uint** _dead_ranges_log2_worker;
   uint _dead_ranges_len;
   uint _num_workers;
-  uint _dead_pages;
+  uint* _dead_pages_worker;
 
   void account_dead_ranges(ShenandoahHeapRegion* r, HeapWord* start, HeapWord* limit) {
     assert(_worker_id < _num_workers, "Dead Range worker id overflow");
@@ -177,14 +177,18 @@ private:
 
     uint count = num_pages - bm.count_one_bits();
     if (count > 0) {
-      _dead_pages += count;
+      _dead_pages_worker[_worker_id] += count;
       // log_info(gc)("Dead Pages of Region %lu: %u, live bytes %lu",
       //         r->index(), count, live_bytes);
     }
   }
 
   void dump_dead_ranges() {
-    uint count;
+    uint count = 0;
+    for (uint i = 0; i < _num_workers; i++)
+      count += _dead_pages_worker[i];
+    log_info(gc)("Dead Pages: %u", count);
+
     for (uint b = 0; b < _dead_ranges_len; b++) {
       count = 0;
       for (uint w = 0; w < _num_workers; w++)
