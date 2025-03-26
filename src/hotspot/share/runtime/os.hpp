@@ -283,6 +283,8 @@ class os: AllStatic {
   static bool supports_vtime();
   static double elapsedVTime();
 
+  static void free_page_frames(bool lazy, char *addr, size_t bytes);
+
   // Return current local time in a string (YYYY-MM-DD HH:MM:SS).
   // It is MT safe, but not async-safe, as reading time zone
   // information may require a lock on some platforms.

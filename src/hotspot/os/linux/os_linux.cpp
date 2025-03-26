@@ -2930,6 +2930,13 @@ void os::pd_free_memory(char *addr, size_t bytes, size_t alignment_hint) {
   }
 }
 
+void os::free_page_frames(bool lazy, char *addr, size_t bytes) {
+  if (lazy)
+    ::madvise(addr, bytes, MADV_FREE);
+  else
+    ::madvise(addr, bytes, MADV_DONTNEED);
+}
+
 size_t os::pd_pretouch_memory(void* first, void* last, size_t page_size) {
   const size_t len = pointer_delta(last, first, sizeof(char)) + page_size;
   // Use madvise to pretouch on Linux when THP is used, and fallback to the
