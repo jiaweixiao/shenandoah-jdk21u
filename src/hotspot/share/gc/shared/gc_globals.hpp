@@ -113,6 +113,12 @@
   product(bool, UseProfileDeadPageInOld, false,                             \
           "Count # of dead pages in old after CM but before Mixed GC")      \
                                                                             \
+  product(bool, UseMadvFreeDeadPage, false,                                 \
+          "Free free pages after CM of genshen with madvise MADV_FREE")     \
+                                                                            \
+  product(bool, UseMadvDontneedDeadPage, false,                             \
+          "Free free pages after CM of genshen with madvise MADV_DONTNEED") \
+                                                                            \
   product(bool, UseMadvFree, false,                                         \
           "Free free regions with madvise MADV_FREE")                       \
                                                                             \
