@@ -882,6 +882,27 @@ public:
       HeapWord* compact_from = cast_from_oop<HeapWord*>(p);
       HeapWord* compact_to = cast_from_oop<HeapWord*>(p->forwardee());
       assert(compact_from != compact_to, "Forwarded object should move");
+
+      // [gc breakdown][region majflt][swapout garbage]
+      if (UseProfileRegionMajflt) {
+        // // DEBUG
+        // if(!_heap->heap_region_containing(p)->is_regular()) {
+        //   log_info(gc)("[ShenandoahCompactObjectsClosure] error state %d",
+        //     _heap->heap_region_containing(p)->state());
+        //   os::abort();
+        // }
+        // log_info(gc)("[ShenandoahCompactObjectsClosure] alloc region %lu, page [" PTR_FORMAT ", " PTR_FORMAT "]",
+        //   _heap->heap_region_index_containing(compact_to),
+        //   p2i(compact_to) >> 12, p2i(compact_to + size) >> 12);
+
+        // conjoint copy, can not init to zero
+        if(os::adc_advise_alloc_range((uintptr_t)compact_to,
+          (uintptr_t)(compact_to + size))) {
+          log_info(gc)("[ShenandoahCompactObjectsClosure] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
+            p2i(compact_to), p2i(compact_to + size));
+          os::abort();
+        }
+      }
       Copy::aligned_conjoint_words(compact_from, compact_to, size);
       oop new_obj = cast_to_oop(compact_to);
 
@@ -1032,6 +1053,27 @@ void ShenandoahFullGC::compact_humongous_objects() {
       assert(r->is_stw_move_allowed(), "Region " SIZE_FORMAT " should be movable", r->index());
 
       log_debug(gc)("Full GC compaction moves humongous object from region " SIZE_FORMAT " to region " SIZE_FORMAT, old_start, new_start);
+      // [gc breakdown][region majflt][swapout garbage]
+      if (UseProfileRegionMajflt) {
+        // if(!r->is_regular()) {
+        //   log_info(gc)("[ShenandoahCompactObjectsClosure] error state %d",
+        //     r->state());
+        //   os::abort();
+        // }
+        // log_info(gc)("[compact_humongous_objects] alloc region %lu, page [" PTR_FORMAT ", " PTR_FORMAT "]",
+        //   new_start,
+        //   p2i(heap->get_region(new_start)->bottom()) >> 12,
+        //   p2i(heap->get_region(new_start)->bottom() + words_size) >> 12);
+
+        // conjoint copy, can not init to zero
+        if(os::adc_advise_alloc_range((uintptr_t)heap->get_region(new_start)->bottom(),
+          (uintptr_t)(heap->get_region(new_start)->bottom() + words_size))) {
+          log_info(gc)("[compact_humongous_objects] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
+            p2i(heap->get_region(new_start)->bottom()),
+            p2i(heap->get_region(new_start)->bottom() + words_size));
+          os::abort();
+        }
+      }
       Copy::aligned_conjoint_words(r->bottom(), heap->get_region(new_start)->bottom(), words_size);
       ContinuationGCSupport::relativize_stack_chunk(cast_to_oop<HeapWord*>(r->bottom()));
 

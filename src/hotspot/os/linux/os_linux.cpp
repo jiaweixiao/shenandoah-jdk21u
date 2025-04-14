@@ -1405,6 +1405,39 @@ void os::Linux::capture_initial_stack(size_t max_size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// [gc breakdown][region majflt]
+// profile majflt by region support
+// skip swap garbage
+int os::adc_advise_init_bitmap(uintptr_t base, size_t region_number, size_t region_size) {
+  return syscall(453, base, region_number, region_size);
+}
+
+int os::adc_advise_free_bitmap(void) {
+  uint mode = 0;
+  return syscall(454, mode, 0, 0);
+}
+
+int os::adc_advise_alloc_range(uintptr_t start, uintptr_t end) {
+  uint mode = 1;
+  return syscall(454, mode, start, end);
+}
+
+int os::adc_advise_free_range(uintptr_t start, uintptr_t end) {
+  uint mode = 2;
+  // // Debug
+  // memset((void*)start, 0, (size_t)(end - start));
+  return syscall(454, mode, start, end);
+}
+
+void os::free_page_frames(bool lazy, char *addr, size_t bytes) {
+  if (lazy)
+    // ::madvise(addr, bytes, MADV_FREE);
+    syscall(455, addr, bytes, MADV_FREE, os::rdtsc());
+  else
+    ::madvise(addr, bytes, MADV_DONTNEED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // time support
 double os::elapsedVTime() {
   struct rusage usage;
@@ -2928,13 +2961,6 @@ void os::pd_free_memory(char *addr, size_t bytes, size_t alignment_hint) {
   if (alignment_hint <= os::vm_page_size() || can_commit_large_page_memory()) {
     commit_memory(addr, bytes, alignment_hint, !ExecMem);
   }
-}
-
-void os::free_page_frames(bool lazy, char *addr, size_t bytes) {
-  if (lazy)
-    ::madvise(addr, bytes, MADV_FREE);
-  else
-    ::madvise(addr, bytes, MADV_DONTNEED);
 }
 
 size_t os::pd_pretouch_memory(void* first, void* last, size_t page_size) {
