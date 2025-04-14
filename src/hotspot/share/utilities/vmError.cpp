@@ -1822,6 +1822,23 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
       log.set_fd(fd_log);
     }
 
+    // // [gc breakdown][region majflt][swapout garbage]
+    // // Debug of signal from kernel page fault
+    // if (_id == SIGBUS || _id == SIGSEGV) {
+    //     address memref = (address)(((siginfo_t*)_siginfo)->si_addr);
+    //     log.print_cr("------------- DEBUG Page Fault ------------");
+    //     log.cr();
+    //     log.print_cr("Wrong page fault addr " PTR_FORMAT , p2i(memref));
+    //     // Check shen gc region type
+    //     CollectedHeap *heap = Universe::heap();
+    //     if (heap->kind() == CollectedHeap::Shenandoah) {
+    //       ShenandoahHeap *shen_heap = static_cast<ShenandoahHeap *>(heap);
+    //       ShenandoahHeapRegion* r = shen_heap->heap_region_containing(memref);
+    //       log.print_cr("Shen region id %lu, type %d" , r->index(), r->state());
+    //     }
+    //     log.cr();
+    // }
+
     report(&log, true);
     log_done = true;
     _current_step = 0;

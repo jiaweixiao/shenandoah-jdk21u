@@ -283,6 +283,12 @@ class os: AllStatic {
   static bool supports_vtime();
   static double elapsedVTime();
 
+  // [gc breakdown][region majflt]
+  // Kernel adc advise, bitmap for pages.
+  static int adc_advise_init_bitmap(uintptr_t base, size_t region_number, size_t region_size);
+  static int adc_advise_free_bitmap(void);
+  static int adc_advise_alloc_range(uintptr_t start, uintptr_t end);
+  static int adc_advise_free_range(uintptr_t start, uintptr_t end);
   static void free_page_frames(bool lazy, char *addr, size_t bytes);
 
   // Return current local time in a string (YYYY-MM-DD HH:MM:SS).

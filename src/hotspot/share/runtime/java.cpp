@@ -485,6 +485,11 @@ void before_exit(JavaThread* thread, bool halt) {
 
   // Stop concurrent GC threads
   Universe::heap()->stop();
+  
+  // [gc breakdown][region majflt]
+  if (UseProfileRegionMajflt) {
+    os::adc_advise_free_bitmap();
+  }
 
   // Print GC/heap related information.
   Log(gc, heap, exit) log;

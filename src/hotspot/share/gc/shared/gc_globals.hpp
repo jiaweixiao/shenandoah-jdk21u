@@ -109,8 +109,12 @@
     constraint))                                                            \
                                                                             \
   /* gc */                                                                  \
+  product(bool, UseProfileRegionMajflt, false,                              \
+          "Enable profile region majflt")                                   \
+                                                                            \
   product(bool, UseProfileDeadPageInOld, false,                             \
           "Count # of dead pages in old after CM but before Mixed GC")      \
+                                                                            \
   product(bool, UseMadvFreeDeadPage, false,                                 \
           "Free free pages after CM of genshen with madvise MADV_FREE")     \
                                                                             \

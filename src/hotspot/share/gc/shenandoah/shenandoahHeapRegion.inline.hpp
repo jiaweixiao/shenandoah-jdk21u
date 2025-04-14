@@ -79,6 +79,16 @@ HeapWord* ShenandoahHeapRegion::allocate_aligned(size_t size, ShenandoahAllocReq
     req.set_waste(pad_words);
     assert(is_object_aligned(new_top), "new top breaks alignment: " PTR_FORMAT, p2i(new_top));
     assert(is_aligned(aligned_obj, alignment_in_bytes), "obj is not aligned: " PTR_FORMAT, p2i(aligned_obj));
+
+    // [gc breakdown][region majflt][swapout garbage]
+    if (UseProfileRegionMajflt) {
+      // // DEBUG
+      // Copy::zero_to_words(obj, size);
+      if(os::adc_advise_alloc_range((uintptr_t)orig_top, (uintptr_t)new_top)) {
+        log_info(gc)("[allocate_aligned] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(orig_top), p2i(new_top));
+        os::abort();
+      }
+    }
     return aligned_obj;
   } else {
     // The aligned size that fits in this region is smaller than min_size, so don't align top and don't allocate.  Return failure.
@@ -101,6 +111,15 @@ HeapWord* ShenandoahHeapRegion::allocate(size_t size, const ShenandoahAllocReque
     assert(is_object_aligned(new_top), "new top breaks alignment: " PTR_FORMAT, p2i(new_top));
     assert(is_object_aligned(obj),     "obj is not aligned: "       PTR_FORMAT, p2i(obj));
 
+    // [gc breakdown][region majflt][swapout garbage]
+    if (UseProfileRegionMajflt) {
+      // // DEBUG
+      // Copy::zero_to_words(obj, size);
+      if(os::adc_advise_alloc_range((uintptr_t)obj, (uintptr_t)new_top)) {
+        log_info(gc)("[allocate] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(obj), p2i(new_top));
+        os::abort();
+      }
+    }
     return obj;
   } else {
     return nullptr;
