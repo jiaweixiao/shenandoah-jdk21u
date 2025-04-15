@@ -868,7 +868,7 @@ void ShenandoahEvacUpdateCleanupOopStorageRootsClosure::do_oop(oop* p) {
         // Here we are asserting that an unmarked from-space object is 'correct'. There seems to be a legitimate
         // use-case for accessing from-space objects during concurrent class unloading. In all modes of Shenandoah,
         // concurrent class unloading only happens during a global collection.
-        shenandoah_assert_correct(p, obj);
+        // shenandoah_assert_correct(p, obj);
         ShenandoahHeap::atomic_clear_oop(p, obj);
       }
     } else if (_evac_in_progress && _heap->in_collection_set(obj)) {

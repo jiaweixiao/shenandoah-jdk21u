@@ -108,8 +108,9 @@ private:
 
     HeapWord* start = bottom;
     HeapWord* dead_obj;
+    uintptr_t dead_page_start, live_page_start;
     oop obj;
-    int sum_dead_pages = 0, tmp_dead_pages;
+    int tmp_dead_pages;
 
     // Scan objects
     while (start < limit) {
@@ -118,18 +119,31 @@ private:
         // Dead range is [dead_obj, next live obj)
         dead_obj = start;
         start = _ctx->get_next_marked_addr(start, limit);
-        tmp_dead_pages = (((uintptr_t)start) >> 12) - ((((uintptr_t)dead_obj) + 4096 -1) >> 12);
+        dead_page_start = (((uintptr_t)dead_obj) + 4096 -1) >> 12;
+        live_page_start = ((uintptr_t)start) >> 12;
+        tmp_dead_pages = live_page_start - dead_page_start;
         if (tmp_dead_pages > 0) {
           assert(log2i(tmp_dead_pages) < (int)_dead_ranges_len, "dead range len %d, %d", tmp_dead_pages, _dead_ranges_len);
+          // Account consecutive dead pages per worker.
           _dead_ranges_log2_worker[_worker_id][log2i(tmp_dead_pages)] += 1;
-          // if (dead_obj+obj->size() < start) {
-          //   // DEBUG
-          //   Copy::zero_to_bytes(((char*)(dead_obj+obj->size())), ((uintptr_t)start) - ((uintptr_t)(dead_obj+obj->size())));
-          //   // os::free_page_frames(true,
-          //   //     ((char*)bottom) + (range_start << 12), range_len << 12);
-          // }
-          Copy::zero_to_bytes(((char*)(dead_obj)), ((uintptr_t)start) - ((uintptr_t)(dead_obj)));
-          sum_dead_pages += tmp_dead_pages;
+          // Free dead range.
+          if (UseFreeDeadPage) {
+            // DEBUG
+            // Copy::zero_to_bytes((char*)dead_obj, (uintptr_t)start - (uintptr_t)dead_obj);
+            // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
+            if (UseProfileRegionMajflt) {
+              if(os::adc_advise_free_range(dead_page_start << 12, live_page_start << 12)) {
+                log_info(gc)("[account_dead_ranges] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, live_page_start << 12);
+                os::abort();
+              }
+            } else if (UseMadvFree) {
+              os::free_page_frames(true,
+                (char*)(dead_page_start << 12), tmp_dead_pages << 12);
+            } else if (UseMadvDontneed) {
+              os::free_page_frames(false,
+                (char*)(dead_page_start << 12), tmp_dead_pages << 12);
+            }
+          }
         }
         // // DEBUG
         // log_info(gc)("dead range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(dead_obj), p2i(start));
