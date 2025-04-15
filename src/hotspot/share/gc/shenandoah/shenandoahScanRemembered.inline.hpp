@@ -176,8 +176,10 @@ void ShenandoahScanRemembered::process_clusters(size_t first_cluster, size_t cou
 
       // PREFIX: The object that straddles into this range of dirty cards
       // from the left may be subject to special treatment unless
-      // it is an object array.
-      if (p < left && !obj->is_objArray()) {
+      // it is an object array or an object that maybe freed by kernel swap.
+      if (p < left &&
+          (!UseFreeDeadPage || ctx == nullptr || ctx->is_marked(obj)) &&
+          !obj->is_objArray()) {
         // The mutator (both compiler and interpreter, but not JNI?)
         // typically dirty imprecisely (i.e. only the head of an object),
         // but GC closures typically dirty the object precisely. (It would
@@ -251,6 +253,7 @@ void ShenandoahScanRemembered::process_clusters(size_t first_cluster, size_t cou
         assert(last_p < right, "Error");
         // check if last_p suffix needs scanning
         const oop last_obj = cast_to_oop(last_p);
+        // UseFreeDeadPage note: the last object is marked.
         if (!last_obj->is_objArray()) {
           // scan the remaining suffix of the object
           const MemRegion last_mr(right, p);

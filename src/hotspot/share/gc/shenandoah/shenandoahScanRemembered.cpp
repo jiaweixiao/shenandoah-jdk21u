@@ -287,6 +287,8 @@ HeapWord* ShenandoahCardCluster::block_start(const size_t card_index) const {
   //    during old or global collections.
   // 4. Every allocation under TAMS updates the object start array.
   NOT_PRODUCT(obj = cast_to_oop(p);)
+  if (UseFreeDeadPage)
+    return p;
   assert(oopDesc::is_oop(obj), "Should be an object");
 #define WALK_FORWARD_IN_BLOCK_START false
   while (WALK_FORWARD_IN_BLOCK_START && p + obj->size() < left) {
