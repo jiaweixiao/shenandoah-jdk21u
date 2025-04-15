@@ -58,9 +58,6 @@ ShenandoahFinalMarkUpdateRegionStateClosure::ShenandoahFinalMarkUpdateRegionStat
   if (UseProfileDeadPageInOld && _ctx != nullptr) {
     _worker_id = 0;
     _num_workers = ShenandoahHeap::heap()->workers()->active_workers();
-    // log_info(gc)("Dead Ranges num workers %u", _num_workers);
-    _dead_pages_worker = NEW_C_HEAP_ARRAY(uint, _num_workers, mtGC);
-    memset(_dead_pages_worker, 0, sizeof(uint) * _num_workers);
 
     // bins: 2^0, ..., 2^log2i(4KB pages per region)
     _dead_ranges_len = log2i(ShenandoahHeapRegion::region_size_bytes() >> 12) + 1;
@@ -76,7 +73,6 @@ ShenandoahFinalMarkUpdateRegionStateClosure::ShenandoahFinalMarkUpdateRegionStat
 ShenandoahFinalMarkUpdateRegionStateClosure::~ShenandoahFinalMarkUpdateRegionStateClosure() {
   if (UseProfileDeadPageInOld && _ctx != nullptr) {
     dump_dead_ranges();
-    FREE_C_HEAP_ARRAY(uint, _dead_pages_worker);
     for (uint i = 0; i < _num_workers; i++) {
       FREE_C_HEAP_ARRAY(uint, _dead_ranges_log2_worker[i]);
     }
@@ -112,7 +108,7 @@ void ShenandoahFinalMarkUpdateRegionStateClosure::heap_region_do(ShenandoahHeapR
 
     if (UseProfileDeadPageInOld && _ctx != nullptr && !r->is_humongous() && r->has_live()) {
       // Account dead ranges.
-      account_dead_ranges(r, r->bottom(), _ctx->top_at_mark_start(r));
+      account_dead_ranges(r->bottom(), _ctx->top_at_mark_start(r));
     }
   } else {
     assert(!r->has_live(), "Region " SIZE_FORMAT " should have no live data", r->index());

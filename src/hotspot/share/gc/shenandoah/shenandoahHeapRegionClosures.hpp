@@ -91,111 +91,56 @@ private:
   ShenandoahMarkingContext* const _ctx;
   ShenandoahSynchronizePinnedRegionStates _pins;
 
-  // [madv free]
-  // Find dead page in region.
-  // First merge consecutive pages and record their length.
-  // Each element is the number of range with given length.
-
   // Per worker bins: 2^0, ..., 2^log2i(4KB pages per region)
   uint** _dead_ranges_log2_worker;
   uint _dead_ranges_len;
   uint _num_workers;
-  uint* _dead_pages_worker;
 
-  void account_dead_ranges(ShenandoahHeapRegion* r, HeapWord* bottom, HeapWord* limit) {
-    assert(_worker_id < _num_workers, "Dead Range worker id overflow");
-    // [madv free]
-    // Find dead page in region.
-    // Here each worker claims one of the old generation regions.
-    HeapWord* start = bottom;
-
-    // Ceiling of number of pages.
-    uint num_pages = (((uintptr_t)limit) - ((uintptr_t)start) + 4096 - 1) >> 12;
-    if (num_pages == 0)
+  // [madv free]
+  // Find dead page in region by scan marked objects.
+  // Here each worker claims one of the old generation regions.
+  void account_dead_ranges(HeapWord* bottom, HeapWord* limit) {
+    if (((uintptr_t)limit) - ((uintptr_t)bottom) < 4096)
       return;
+    assert(_worker_id < _num_workers, "Dead Range worker id overflow");
+    // // DEBUG
+    // log_info(gc)("begin dead ranges [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(bottom), p2i(limit));
 
-    // Ceiling of length of bitmap array.
-    uint bitmap_len = (num_pages + BitsPerWord - 1) >> LogBitsPerWord;
-    // log_info(gc)("Dead num_pages %u bitmap_len %u", num_pages, bitmap_len);
-    BitMap::bm_word_t live_page_bits[bitmap_len] = {0};
-    BitMapView bm(live_page_bits, num_pages);
+    HeapWord* start = bottom;
+    HeapWord* dead_obj;
+    oop obj;
+    int sum_dead_pages = 0, tmp_dead_pages;
 
-    size_t obj_size, live_bytes = 0;
-    uint start_id, end_id;
-    oop obj; 
-
+    // Scan objects
     while (start < limit) {
       obj = cast_to_oop(start);
-
-      if (_ctx->is_marked(obj)) { // Object is marked.
-        assert(obj->klass() != nullptr, "klass should not be nullptr");
-        // Obj size in heap word.
-        obj_size = obj->size();
-        start_id = (((uintptr_t)start) - ((uintptr_t)bottom)) >> 12;
-        // Ceiling of id
-        end_id = (((uintptr_t)start) - ((uintptr_t)bottom) + (obj_size << LogHeapWordSize) + 4096 - 1) >> 12;
-        assert(start_id != end_id, "Dead Pages of Region 1");
-        for (; start_id < end_id; start_id++) {
-          bm.set_bit(start_id);
-        }
-        live_bytes += obj_size << LogHeapWordSize;
-        start += obj_size;
-      } else { // Object is not marked.
+      if (!_ctx->is_marked(obj)) { // Object is not marked
+        // Dead range is [dead_obj, next live obj)
+        dead_obj = start;
         start = _ctx->get_next_marked_addr(start, limit);
-      }
-    }
-    // If the last obj is not aligned to page,
-    // set it marked since it has objs above tams.
-    if (((uintptr_t)limit) % 4096)
-      bm.set_bit(num_pages - 1);
-
-    // First merge consecutive pages and record their length.
-    // Each element is the number of range with given length.
-    uint range_start = 0, range_len = 0;
-    bool is_prev_dead = false;
-    for (uint i = 0; i < num_pages; i++) {
-      if (bm.at(i) == false) { // Dead Page
-        if (is_prev_dead) // Continue dead range
-          range_len += 1;
-        else { // Start dead range
-          range_start = i;
-          range_len = 1;
+        tmp_dead_pages = (((uintptr_t)start) >> 12) - ((((uintptr_t)dead_obj) + 4096 -1) >> 12);
+        if (tmp_dead_pages > 0) {
+          assert(log2i(tmp_dead_pages) < (int)_dead_ranges_len, "dead range len %d, %d", tmp_dead_pages, _dead_ranges_len);
+          _dead_ranges_log2_worker[_worker_id][log2i(tmp_dead_pages)] += 1;
+          // if (dead_obj+obj->size() < start) {
+          //   // DEBUG
+          //   Copy::zero_to_bytes(((char*)(dead_obj+obj->size())), ((uintptr_t)start) - ((uintptr_t)(dead_obj+obj->size())));
+          //   // os::free_page_frames(true,
+          //   //     ((char*)bottom) + (range_start << 12), range_len << 12);
+          // }
+          Copy::zero_to_bytes(((char*)(dead_obj)), ((uintptr_t)start) - ((uintptr_t)(dead_obj)));
+          sum_dead_pages += tmp_dead_pages;
         }
-        is_prev_dead = true;
-      } else { // Live Page
-        if (is_prev_dead) { // Finish dead range
-          assert(log2i(range_len) < (int)_dead_ranges_len, "dead range len");
-          // log_info(gc)("Dead Range worker id %u", _worker_id);
-          _dead_ranges_log2_worker[_worker_id][log2i(range_len)] += 1;
-          if (UseMadvFreeDeadPage) { // Free with madv free
-            os::free_page_frames(true,
-                ((char*)bottom) + (range_start << 12), range_len << 12);
-          } else if (UseMadvDontneedDeadPage) { // Free with madv dontneed
-            os::free_page_frames(false,
-                ((char*)bottom) + (range_start << 12), range_len << 12);
-          }
-        }
-        is_prev_dead = false;
+        // // DEBUG
+        // log_info(gc)("dead range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(dead_obj), p2i(start));
+      } else { // Object is marked
+        start += obj->size();
       }
-    }
-    if (is_prev_dead) { // Last page is dead
-        assert(log2i(range_len) < (int)_dead_ranges_len, "dead range len");
-      _dead_ranges_log2_worker[_worker_id][log2i(range_len)] += 1;
-    }
-
-    uint count = num_pages - bm.count_one_bits();
-    if (count > 0) {
-      _dead_pages_worker[_worker_id] += count;
-      // log_info(gc)("Dead Pages of Region %lu: %u, live bytes %lu",
-      //         r->index(), count, live_bytes);
     }
   }
 
   void dump_dead_ranges() {
     uint count = 0;
-    for (uint i = 0; i < _num_workers; i++)
-      count += _dead_pages_worker[i];
-    log_info(gc)("Dead Pages: %u", count);
 
     for (uint b = 0; b < _dead_ranges_len; b++) {
       count = 0;
