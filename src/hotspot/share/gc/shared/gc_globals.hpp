@@ -115,6 +115,9 @@
   product(bool, UseProfileDeadPageInOld, false,                             \
           "Count # of dead pages in old after CM but before Mixed GC")      \
                                                                             \
+  product(bool, UseFreeEmptyRegion, false,                                  \
+          "Free empty regions.")                                            \
+                                                                            \
   product(bool, UseFreeDeadPage, false,                                     \
           "Free free pages after CM of genshen")                            \
                                                                             \

@@ -469,6 +469,15 @@ CollectedHeap::fill_with_object_impl(HeapWord* start, size_t words, bool zap)
 {
   assert(words <= filler_array_max_size(), "too big for a single object");
 
+  // [gc breakdown][region majflt][swapout garbage]
+  if (UseProfileRegionMajflt && words > 0) {
+    if(os::adc_advise_alloc_range((uintptr_t)start, (uintptr_t)(start + words))) {
+      log_info(gc)("[fill_with_object_impl] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
+        p2i(start), p2i(start + words));
+      os::abort();
+    }
+  }
+
   if (words >= filler_array_min_size()) {
     fill_with_array(start, words, zap);
   } else if (words > 0) {
