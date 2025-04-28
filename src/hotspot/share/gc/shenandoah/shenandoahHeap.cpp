@@ -2175,6 +2175,20 @@ void ShenandoahHeap::stop() {
   if (_uncommit_thread != nullptr) {
     _uncommit_thread->stop();
   }
+
+  // Dump region trashed count
+  size_t count = 0, dead_count = 0;
+  // size_t free_empty_cycle = 0, scan_dead_cycle = 0, free_dead_cycle = 0;
+  for (size_t i = 0; i < num_regions(); i++) {
+    count += get_region(i)->trashed_count();
+    // free_empty_cycle += get_region(i)->free_emptyregion_cycle();
+    // dead_count += get_region(i)->deadrange_count();
+    // scan_dead_cycle += get_region(i)->scan_deadrange_cycle();
+    // free_dead_cycle += get_region(i)->free_deadrange_cycle();
+  }
+  log_info(gc)("Free Regions (sum): %lu", count);
+  // log_info(gc)("Cost of Empty Region: %.2fus", free_empty_cycle/2.4/1000/count);
+  // log_info(gc)("Cost of Dead Range: avg scan %.2fus, avg free %.2fus, count %lu", scan_dead_cycle/2.4/1000/dead_count, free_dead_cycle/2.4/1000/dead_count, dead_count);
 }
 
 void ShenandoahHeap::stw_unload_classes(bool full_gc) {

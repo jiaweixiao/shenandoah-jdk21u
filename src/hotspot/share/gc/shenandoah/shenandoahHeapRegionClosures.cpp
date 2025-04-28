@@ -108,7 +108,7 @@ void ShenandoahFinalMarkUpdateRegionStateClosure::heap_region_do(ShenandoahHeapR
 
     if (UseProfileDeadPageInOld && _ctx != nullptr && !r->is_humongous() && r->has_live()) {
       // Account dead ranges.
-      account_dead_ranges(r->bottom(), _ctx->top_at_mark_start(r));
+      account_dead_ranges(r, r->bottom(), _ctx->top_at_mark_start(r));
     }
   } else {
     assert(!r->has_live(), "Region " SIZE_FORMAT " should have no live data", r->index());
