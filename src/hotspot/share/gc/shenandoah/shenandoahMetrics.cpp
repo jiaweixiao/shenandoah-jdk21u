@@ -45,10 +45,8 @@ void ShenandoahMetricsSnapshot::snap_after() {
 
 bool ShenandoahMetricsSnapshot::is_good_progress() {
   // Under the critical threshold?
-  // size_t free_actual   = _heap->free_set()->available();
-  // size_t free_expected = _heap->max_capacity() / 100 * ShenandoahCriticalFreeThreshold;
-
-  size_t free_actual   = _heap->free_set()->available_all();
+  size_t free_actual   = (!UseShenFixYoungSize) ? 
+          _heap->free_set()->available() : _heap->free_set()->available_all();
   size_t free_expected = _heap->max_capacity() / 100 * ShenandoahCriticalFreeThreshold;
 
   bool prog_free = free_actual >= free_expected;
