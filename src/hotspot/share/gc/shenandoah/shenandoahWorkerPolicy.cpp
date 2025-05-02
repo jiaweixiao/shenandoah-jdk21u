@@ -186,9 +186,14 @@ void ShenandoahWorkerPolicy::update_conc_thread_num(){
 uint ShenandoahWorkerPolicy::calc_active_conc_workers(uintx total_workers,
                                             uintx active_workers,
                                             uintx application_workers) {
-  if(_prev_conc_workers == 0){
-    _prev_conc_workers = ConcGCThreads;
+  if (!UseShenTuneConcGCThreads) {
+    return WorkerPolicy::calc_active_conc_workers(total_workers,
+                    active_workers, application_workers);
+  } else {
+    if(_prev_conc_workers == 0){
+      _prev_conc_workers = ConcGCThreads;
+    }
+    log_info(gc)("Conc thread num: %u", _prev_conc_workers);
+    return _prev_conc_workers;
   }
-  log_info(gc)("Conc thread num: %u", _prev_conc_workers);
-  return _prev_conc_workers;
 }

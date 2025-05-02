@@ -131,6 +131,9 @@
   product(bool, UseShenandoahGC, false,                                     \
           "Use the Shenandoah garbage collector")                           \
                                                                             \
+  product(bool, UseShenTuneConcGCThreads, false,                            \
+          "Tune conc gc threads of Shenandoah garbage collector")           \
+                                                                            \
   product(uint, ParallelGCThreads, 0,                                       \
           "Number of parallel threads parallel gc will use")                \
           constraint(ParallelGCThreadsConstraintFunc,AfterErgo)             \
