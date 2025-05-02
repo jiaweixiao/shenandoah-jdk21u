@@ -141,6 +141,9 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   // Complete marking under STW, and start evacuation
   vmop_entry_final_mark();
 
+  // // Scan and free dead ranges of partial free region.
+  // entry_free_dead_range();
+
   // If the GC was cancelled before final mark, nothing happens on the safepoint. We are still
   // in the marking phase and must resume the degenerated cycle from there. If the GC was cancelled
   // after final mark, then we've entered the evacuation phase and must resume the degenerated cycle
@@ -326,6 +329,22 @@ void ShenandoahConcurrentGC::entry_final_mark() {
 
   op_final_mark();
 }
+
+// void ShenandoahConcurrentGC::entry_free_dead_range() {
+//   ShenandoahHeap* const heap = ShenandoahHeap::heap();
+//   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
+
+//   static const char* msg = "Concurrent free dead range";
+//   ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_free_dead_range);
+//   EventMark em("%s", msg);
+
+//   ShenandoahWorkerScope scope(heap->workers(),
+//                               ShenandoahWorkerPolicy::calc_workers_for_free_dead_range(),
+//                               "concurrent free dead range");
+
+//   // heap->try_inject_alloc_failure();
+//   op_free_dead_range();
+// }
 
 void ShenandoahConcurrentGC::entry_init_update_refs() {
   static const char* msg = "Pause Init Update Refs";
@@ -780,6 +799,10 @@ void ShenandoahConcurrentGC::op_final_mark() {
     heap->propagate_gc_state_to_all_threads();
   }
 }
+
+// void ShenandoahConcurrentGC::op_free_dead_range() {
+//   ShenandoahHeap::heap()->free_dead_range();
+// }
 
 bool ShenandoahConcurrentGC::has_in_place_promotions(ShenandoahHeap* heap) {
   return heap->mode()->is_generational() && heap->old_generation()->has_in_place_promotions();

@@ -111,8 +111,8 @@ private:
     uintptr_t dead_page_start, live_page_start;
     oop obj;
     int tmp_dead_pages;
-    // size_t tmp_stt, tmp_free_cycle = 0;
-    // size_t stt_cycle = os::rdtsc();
+    size_t tmp_stt, tmp_free_cycle = 0;
+    size_t stt_cycle = os::rdtsc();
 
     // Scan objects
     while (start < limit) {
@@ -130,7 +130,7 @@ private:
           _dead_ranges_log2_worker[_worker_id][log2i(tmp_dead_pages)] += 1;
           // Free dead range.
           if (UseFreeDeadPage) {
-            // tmp_stt = os::rdtsc();
+            tmp_stt = os::rdtsc();
             // DEBUG
             // Copy::zero_to_bytes((char*)dead_obj, (uintptr_t)start - (uintptr_t)dead_obj);
             // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
@@ -146,7 +146,7 @@ private:
               os::free_page_frames(false,
                 (char*)(dead_page_start << 12), tmp_dead_pages << 12);
             }
-            // tmp_free_cycle += os::rdtsc() - tmp_stt;
+            tmp_free_cycle += os::rdtsc() - tmp_stt;
           }
         }
         // // DEBUG
@@ -155,9 +155,9 @@ private:
         start += obj->size();
       }
     }
-    // r->add_scan_deadrange_cycle(os::rdtsc() - stt_cycle - tmp_free_cycle);
-    // r->add_free_deadrange_cycle(tmp_free_cycle);
-    // r->add_deadrange_count(1);
+    r->add_scan_deadrange_cycle(os::rdtsc() - stt_cycle - tmp_free_cycle);
+    r->add_free_deadrange_cycle(tmp_free_cycle);
+    r->add_deadrange_count(1);
   }
 
   void dump_dead_ranges() {
