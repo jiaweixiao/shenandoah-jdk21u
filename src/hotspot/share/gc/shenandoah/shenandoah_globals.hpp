@@ -222,6 +222,21 @@
   product(bool, UseShenFixYoungSize, false, EXPERIMENTAL,                   \
           "Fix young size of GenShen")                                      \
                                                                             \
+  product(bool, UseShenTuneYoungSize, false, EXPERIMENTAL,                  \
+          "Adaptive change young size of genshen")                          \
+                                                                            \
+  product(uintx, ShenTuneYoungInterval, 3, EXPERIMENTAL,                    \
+          "Average and adjust every ShenTuneYoungInterval young gcs")       \
+                                                                            \
+  product(uintx, ShenTuneYoungIncreStepRegions, 8, EXPERIMENTAL,            \
+          "Step to increase young size in regions")                         \
+                                                                            \
+  product(double, ShenTuneYoungMMU, 1, EXPERIMENTAL,                        \
+          "gc_user_time / mut_user_time < ShenTuneYoungMMU")                \
+                                                                            \
+  product(double, ShenTuneYoungGCK2U, 1, EXPERIMENTAL,                      \
+          "gc_sys_time / gc_uesr_time < ShenTuneYoungGCK2U")                \
+                                                                            \
   product(uintx, ShenandoahAllocationThreshold, 0, EXPERIMENTAL,            \
           "How many new allocations should happen since the last GC cycle " \
           "before some heuristics trigger the collection. In percents of "  \

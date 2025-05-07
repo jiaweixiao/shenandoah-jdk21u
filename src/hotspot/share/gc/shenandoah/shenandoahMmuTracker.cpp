@@ -52,16 +52,42 @@ class ThreadTimeAccumulator : public ThreadClosure {
   }
 };
 
+class ThreadUserSYSTimeAccumulator : public ThreadClosure {
+ public:
+  size_t total_user_time;
+  size_t total_sys_time;
+  ThreadUserSYSTimeAccumulator() : total_user_time(0), total_sys_time(0) {}
+  void do_thread(Thread* thread) override {
+    size_t user, sys;
+    if (!os::slow_thread_user_sys_time(thread, &user, &sys)) {
+      total_user_time += user;
+      total_sys_time += sys;
+    } else {
+      log_info(gc)("ThreadUserSYSTimeAccumulator get thread cpu time error");
+    }
+  }
+};
+
 ShenandoahMmuTracker::ShenandoahMmuTracker() :
     _most_recent_timestamp(0.0),
     _most_recent_gc_time(0.0),
     _most_recent_gcu(0.0),
     _most_recent_mutator_time(0.0),
     _most_recent_mu(0.0),
+    _most_recent_gc_user_time(0.0),
+    _most_recent_gc_sys_time(0.0),
+    _most_recent_mutator_user_time(0.0),
+    _most_recent_mutator_sys_time(0.0),
     _most_recent_periodic_time_stamp(0.0),
     _most_recent_periodic_gc_time(0.0),
     _most_recent_periodic_mutator_time(0.0),
-    _mmu_periodic_task(new ShenandoahMmuTask(this)) {
+    _mmu_periodic_task(new ShenandoahMmuTask(this)),
+    _young_gcs(0),
+    _young_gc_user_time_seq(ShenTuneYoungInterval/*length*/, 0.5 /*decay factor*/),
+    _young_gc_sys_time_seq(ShenTuneYoungInterval, 0.5),
+    _young_gc_period_seq(ShenTuneYoungInterval, 0.5),
+    _young_mutator_user_time_seq(ShenTuneYoungInterval, 0.5),
+    _young_mutator_sys_time_seq(ShenTuneYoungInterval, 0.5) {
 }
 
 ShenandoahMmuTracker::~ShenandoahMmuTracker() {
@@ -83,7 +109,29 @@ void ShenandoahMmuTracker::fetch_cpu_times(double &gc_time, double &mutator_time
   mutator_time =(process_user_time + process_system_time) - most_recent_gc_thread_time;
 }
 
-void ShenandoahMmuTracker::update_utilization(size_t gcid, const char* msg) {
+void ShenandoahMmuTracker::fetch_user_sys_times(double &gc_user_time, double &gc_sys_time, double &mutator_user_time, double &mutator_sys_time) {
+  ThreadUserSYSTimeAccumulator cl;
+  // We include only the gc threads because those are the only threads
+  // we are responsible for.
+  ShenandoahHeap::heap()->gc_threads_do(&cl);
+  double most_recent_gc_user_time = double(cl.total_user_time) / NANOSECS_PER_SEC;
+  double most_recent_gc_sys_time = double(cl.total_sys_time) / NANOSECS_PER_SEC;
+  gc_user_time = most_recent_gc_user_time;
+  gc_sys_time = most_recent_gc_sys_time;
+
+  double process_real_time(0.0), process_user_time(0.0), process_system_time(0.0);
+  bool valid = os::getTimesSecs(&process_real_time, &process_user_time, &process_system_time);
+  assert(valid, "don't know why this would not be valid");
+  mutator_sys_time = process_system_time - most_recent_gc_sys_time;
+  mutator_user_time = process_user_time - most_recent_gc_user_time;
+}
+
+void ShenandoahMmuTracker::update_utilization(size_t gcid, const char* msg, bool is_young) {
+  if (UseShenTuneYoungSize) {
+    update_utilization_farmem(gcid, msg, is_young);
+    return;
+  }
+
   double current = os::elapsedTime();
   _most_recent_gcid = gcid;
   _most_recent_is_full = false;
@@ -109,8 +157,60 @@ void ShenandoahMmuTracker::update_utilization(size_t gcid, const char* msg) {
   }
 }
 
+void ShenandoahMmuTracker::update_utilization_farmem(size_t gcid, const char* msg, bool is_young) {
+  double current = os::elapsedTime();
+  _most_recent_gcid = gcid;
+  _most_recent_is_full = false;
+
+  if (gcid == 0) {
+    fetch_user_sys_times(_most_recent_gc_user_time, _most_recent_gc_sys_time, _most_recent_mutator_user_time, _most_recent_mutator_sys_time);
+
+    _most_recent_timestamp = current;
+  } else {
+    double gc_cycle_period = current - _most_recent_timestamp;
+    _most_recent_timestamp = current;
+
+    double gc_thread_user_time, gc_thread_sys_time, mutator_thread_user_time, mutator_thread_sys_time;
+    fetch_user_sys_times(gc_thread_user_time, gc_thread_sys_time, mutator_thread_user_time, mutator_thread_sys_time);
+
+    double gc_user_time = gc_thread_user_time - _most_recent_gc_user_time;
+    double gc_sys_time = gc_thread_sys_time - _most_recent_gc_sys_time;
+    gc_user_time = gc_user_time >= 0 ? gc_user_time : 0;
+    gc_sys_time = gc_sys_time >= 0 ? gc_sys_time : 0;
+    _most_recent_gc_user_time = gc_thread_user_time;
+    _most_recent_gc_sys_time = gc_thread_sys_time;
+    _most_recent_gc_time = gc_thread_user_time + gc_thread_sys_time;
+    _most_recent_gcu = (gc_user_time + gc_sys_time) / (_active_processors * gc_cycle_period);
+
+    double mutator_user_time = mutator_thread_user_time - _most_recent_mutator_user_time;
+    double mutator_sys_time = mutator_thread_sys_time - _most_recent_mutator_sys_time;
+    mutator_user_time = mutator_user_time >= 0 ? mutator_user_time : 0;
+    mutator_sys_time = mutator_sys_time >= 0 ? mutator_sys_time : 0;
+    _most_recent_mutator_user_time = mutator_thread_user_time;
+    _most_recent_mutator_sys_time = mutator_thread_sys_time;
+    _most_recent_mutator_time = mutator_thread_user_time + mutator_thread_sys_time;
+    _most_recent_mu = (mutator_user_time + mutator_sys_time) / (_active_processors * gc_cycle_period);
+
+    if (is_young) {
+      _young_gcs += 1;
+      _young_gc_user_time_seq.add(gc_user_time);
+      _young_gc_sys_time_seq.add(gc_sys_time);
+      _young_gc_period_seq.add(gc_cycle_period);
+      _young_mutator_user_time_seq.add(mutator_user_time);
+      _young_mutator_sys_time_seq.add(mutator_sys_time);
+    }
+
+    log_info(gc, ergo)("At end of %s: GCU: %.1f%%, MU: %.1f%% during period of %.3fs",
+                       msg, _most_recent_gcu * 100, _most_recent_mu * 100, gc_cycle_period);
+    log_info(gc, ergo)("GCK2U: %.1f%%, MK2U: %.1f%%, K2U: %.1f%%",
+                       gc_sys_time / gc_user_time * 100, mutator_sys_time / mutator_user_time * 100, (gc_sys_time + mutator_sys_time) / (gc_user_time + mutator_user_time) * 100);
+    log_info(gc, ergo)("most recent mut user: %.1fs, sys: %.1fs",
+                       _most_recent_mutator_user_time, _most_recent_mutator_sys_time);
+  }
+}
+
 void ShenandoahMmuTracker::record_young(size_t gcid) {
-  update_utilization(gcid, "Concurrent Young GC");
+  update_utilization(gcid, "Concurrent Young GC", true /*is_young*/);
 }
 
 void ShenandoahMmuTracker::record_global(size_t gcid) {
@@ -147,7 +247,7 @@ void ShenandoahMmuTracker::record_degenerated(size_t gcid, bool is_old_bootstrap
   } else if (is_old_bootstrap) {
     update_utilization(gcid, "Degenerated Bootstrap Old GC");
   } else {
-    update_utilization(gcid, "Degenerated Young GC");
+    update_utilization(gcid, "Degenerated Young GC", true /*is_young*/);
   }
 }
 
@@ -176,6 +276,26 @@ void ShenandoahMmuTracker::report() {
   log_info(gc)("Periodic Sample: GCU = %.3f%%, MU = %.3f%% during most recent %.1fs", gcu * 100, mu * 100, time_delta);
 }
 
+// void ShenandoahMmuTracker::report_farmem() {
+//   // This is only called by the periodic thread.
+//   double current = os::elapsedTime();
+//   double time_delta = current - _most_recent_periodic_time_stamp;
+//   _most_recent_periodic_time_stamp = current;
+
+//   double gc_time, mutator_time;
+//   fetch_cpu_times(gc_time, mutator_time);
+
+//   double gc_delta = gc_time - _most_recent_periodic_gc_time;
+//   _most_recent_periodic_gc_time = gc_time;
+
+//   double mutator_delta = mutator_time - _most_recent_periodic_mutator_time;
+//   _most_recent_periodic_mutator_time = mutator_time;
+
+//   double mu = mutator_delta / (_active_processors * time_delta);
+//   double gcu = gc_delta / (_active_processors * time_delta);
+//   log_info(gc)("Periodic Sample: GCU = %.3f%%, MU = %.3f%% during most recent %.1fs", gcu * 100, mu * 100, time_delta);
+// }
+
 void ShenandoahMmuTracker::initialize() {
   // initialize static data
   _active_processors = os::initial_active_processor_count();
@@ -188,7 +308,8 @@ void ShenandoahMmuTracker::initialize() {
 ShenandoahGenerationSizer::ShenandoahGenerationSizer()
   : _sizer_kind(SizerDefaults),
     _min_desired_young_regions(0),
-    _max_desired_young_regions(0) {
+    _max_desired_young_regions(0),
+    _recent_tune_young_gcs(0) {
   log_info(gc)("Sizer enter");
 
   if (FLAG_IS_CMDLINE(NewRatio)) {
@@ -346,4 +467,65 @@ size_t ShenandoahGenerationSizer::min_young_size() const {
 
 size_t ShenandoahGenerationSizer::max_young_size() const {
   return max_young_regions() * ShenandoahHeapRegion::region_size_bytes();
+}
+
+double young_decre_factor(double user, double sys){
+  return 0.3 - user / (5 * sys);
+}
+
+void ShenandoahGenerationSizer::adaptive_recalculate_min_max_young_length(ShenandoahMmuTracker* mmu_tracker) {
+  size_t young_gcs = mmu_tracker->young_gcs();
+  // Tune young size once every ShenTuneYoungInterval young gcs.
+  if (young_gcs % ShenTuneYoungInterval != 0 || young_gcs == _recent_tune_young_gcs)
+    return;
+  _recent_tune_young_gcs = young_gcs;
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahGeneration* young_gen = heap->young_generation();
+  ShenandoahGeneration* old_gen = heap->old_generation();
+  size_t region_size_bytes = ShenandoahHeapRegion::region_size_bytes();
+  size_t heap_size_bytes = heap->max_capacity();
+  size_t young_size_bytes_orig = young_gen->soft_max_capacity();
+  size_t young_size_bytes_new = 0;
+  size_t increase_bytes = 0, decrease_bytes = 0;
+
+  double gc_user_time = mmu_tracker->young_gc_user_time_davg();
+  double gc_sys_time = mmu_tracker->young_gc_sys_time_davg();
+  double gc_period_time = mmu_tracker->young_gc_period_davg();
+  double mut_user_time = mmu_tracker->young_mutator_user_time_davg();
+  double mut_sys_time = mmu_tracker->young_mutator_sys_time_davg();
+
+  if (gc_user_time > mut_user_time * ShenTuneYoungMMU && gc_period_time < 0.1) {
+    // Too many user time on gc than mutator, increase young by step
+    increase_bytes = ShenTuneYoungIncreStepRegions * region_size_bytes;
+    young_size_bytes_new = young_size_bytes_orig + increase_bytes;
+    if (young_size_bytes_new >= heap_size_bytes || young_size_bytes_new <= 0)
+      increase_bytes = 0;
+  } else if (gc_sys_time > gc_user_time * ShenTuneYoungGCK2U) {
+    // The WSS of young gc is large, decrease young by ratio
+    double mut_decre = 2*mut_sys_time > mut_user_time ? young_decre_factor(mut_user_time, mut_sys_time) : 0;
+    double gc_decre = 2*gc_sys_time > gc_user_time ? young_decre_factor(gc_user_time, gc_sys_time) : 0;
+    double decre = (mut_decre - gc_decre) / 4 + gc_decre;
+    decrease_bytes = (size_t)((double)young_size_bytes_orig * decre);
+    // decrease_bytes = (size_t)((double)young_size_bytes_orig * gc_decre);
+    decrease_bytes = align_up(decrease_bytes, region_size_bytes);
+    young_size_bytes_new = young_size_bytes_orig - decrease_bytes;
+    if (young_size_bytes_new < region_size_bytes || young_size_bytes_new <= 0)
+      decrease_bytes = 0;
+  }
+
+  if (increase_bytes > 0 || decrease_bytes > 0) {
+    ShenandoahHeapLocker locker(heap->lock());
+    _max_desired_young_regions = (size_t)(young_size_bytes_new / region_size_bytes);
+    young_gen->set_max_capacity(young_size_bytes_new);
+    young_gen->set_soft_max_capacity(young_size_bytes_new);
+    old_gen->set_max_capacity(heap_size_bytes - young_size_bytes_new);
+    old_gen->set_soft_max_capacity(heap_size_bytes - young_size_bytes_new);
+    log_info(gc, ergo)("[adaptive young] %s young for %ld bytes, new young %ld bytes",
+            increase_bytes > 0 ? "incre" : "decre",
+            increase_bytes > 0 ? increase_bytes : decrease_bytes,
+            young_size_bytes_new);
+  } else {
+    log_info(gc, ergo)("[adaptive young] skip");
+  }
 }

@@ -58,6 +58,11 @@ private:
   double _most_recent_gcu;
   double _most_recent_mutator_time;
   double _most_recent_mu;
+  // For far memory adaptive young size
+  double _most_recent_gc_user_time;
+  double _most_recent_gc_sys_time;
+  double _most_recent_mutator_user_time;
+  double _most_recent_mutator_sys_time;
 
   // These variables hold recent snapshots of cumulative quantities that are used for reporting
   // periodic consumption of CPU time by GC and mutator threads.
@@ -71,10 +76,19 @@ private:
   bool _most_recent_is_full;
 
   ShenandoahMmuTask* _mmu_periodic_task;
-  TruncatedSeq _mmu_average;
 
-  void update_utilization(size_t gcid, const char* msg);
+  size_t _young_gcs;
+  TruncatedSeq _mmu_average;
+  TruncatedSeq _young_gc_user_time_seq;
+  TruncatedSeq _young_gc_sys_time_seq;
+  TruncatedSeq _young_gc_period_seq;
+  TruncatedSeq _young_mutator_user_time_seq;
+  TruncatedSeq _young_mutator_sys_time_seq;
+
+  void update_utilization(size_t gcid, const char* msg, bool is_young = false);
+  inline void update_utilization_farmem(size_t gcid, const char* msg, bool is_young);
   static void fetch_cpu_times(double &gc_time, double &mutator_time);
+  static void fetch_user_sys_times(double &gc_user_time, double &gc_sys_time, double &mutator_user_time, double &mutator_sys_time);
 
 public:
   explicit ShenandoahMmuTracker();
@@ -102,6 +116,24 @@ public:
   // GCPauseIntervalMillis and defaults to 5 seconds. This method computes
   // the MMU over the elapsed interval and records it in a running average.
   void report();
+
+  // For far memory adaptive young size
+  // Get decay avg from seqs.
+  double young_gc_user_time_davg() { return _young_gc_user_time_seq.avg(); };
+  double young_gc_sys_time_davg() { return _young_gc_sys_time_seq.avg(); };
+  double young_gc_period_davg() { return _young_gc_period_seq.avg(); };
+  double young_mutator_user_time_davg() { return _young_mutator_user_time_seq.avg(); };
+  double young_mutator_sys_time_davg() { return _young_mutator_sys_time_seq.avg(); };
+  // double young_gc_user_time_davg() { return _young_gc_user_time_seq.davg(); };
+  // double young_gc_sys_time_davg() { return _young_gc_sys_time_seq.davg(); };
+  // double young_gc_period_davg() { return _young_gc_period_seq.davg(); };
+  // double young_mutator_user_time_davg() { return _young_mutator_user_time_seq.davg(); };
+  // double young_mutator_sys_time_davg() { return _young_mutator_sys_time_seq.davg(); };
+  // double young_gc_user_time_davg() { return _young_gc_user_time_seq.last(); };
+  // double young_gc_sys_time_davg() { return _young_gc_sys_time_seq.last(); };
+  // double young_mutator_user_time_davg() { return _young_mutator_user_time_seq.last(); };
+  // double young_mutator_sys_time_davg() { return _young_mutator_sys_time_seq.last(); };
+  size_t young_gcs() { return _young_gcs; };
 };
 
 class ShenandoahGenerationSizer {
@@ -117,6 +149,8 @@ private:
 
   size_t _min_desired_young_regions;
   size_t _max_desired_young_regions;
+
+  size_t _recent_tune_young_gcs;
 
   static size_t calculate_min_young_regions(size_t heap_region_count);
   static size_t calculate_max_young_regions(size_t heap_region_count);
@@ -149,6 +183,12 @@ public:
 
   // force transfer is used when we promote humongous objects.  May violate min/max limits on generation sizes
   void force_transfer_to_old(size_t regions) const;
+
+  // Recalculate young size with heuristic algorithm at mmu update.
+  // The main principals are:
+  //  1. meet mmu target;
+  //  2. limit young size such that  gc_ker / gc_user is lower than threshold.
+  void adaptive_recalculate_min_max_young_length(ShenandoahMmuTracker* mmu_tracker);
 };
 
 #endif //SHARE_GC_SHENANDOAH_SHENANDOAHMMUTRACKER_HPP

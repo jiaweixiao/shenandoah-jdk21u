@@ -1017,6 +1017,14 @@ void ShenandoahGeneration::decrease_capacity(size_t decrement) {
          "Cannot use more than capacity");
 }
 
+void ShenandoahGeneration::set_max_capacity(size_t v) {
+  _max_capacity = v;
+}
+
+void ShenandoahGeneration::set_soft_max_capacity(size_t v) {
+  _soft_max_capacity = v;
+}
+
 void ShenandoahGeneration::record_success_concurrent(bool abbreviated) {
   heuristics()->record_success_concurrent(abbreviated);
   ShenandoahHeap::heap()->shenandoah_policy()->record_success_concurrent(is_young(), abbreviated);
