@@ -1279,6 +1279,7 @@ void ShenandoahFreeSet::rebuild_simple(size_t young_cset_regions, size_t old_cse
   young_available += young_cset_regions * region_size_bytes;
 
   size_t old_soft_max_capacity_regions = _heap->old_generation()->soft_max_capacity() / region_size_bytes;
+  // If MaxNewSize is set with cmd option, soft_max_capacity equals MaxNewSize
   size_t young_soft_max_capacity_regions = _heap->young_generation()->soft_max_capacity() / region_size_bytes;
 
   size_t old_used_regions = _heap->old_generation()->used_regions();

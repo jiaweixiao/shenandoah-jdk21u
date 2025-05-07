@@ -5408,6 +5408,50 @@ static jlong slow_thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
   }
 }
 
+//  -1 on error.
+jlong os::slow_thread_user_sys_time(Thread *thread, size_t *utime, size_t *stime) {
+  pid_t  tid = thread->osthread()->thread_id();
+  char *s;
+  char stat[2048];
+  int statlen;
+  char proc_name[64];
+  int count;
+  long sys_time, user_time;
+  char cdummy;
+  int idummy;
+  long ldummy;
+  FILE *fp;
+
+  snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
+  fp = os::fopen(proc_name, "r");
+  if (fp == nullptr) return -1;
+  statlen = fread(stat, 1, 2047, fp);
+  stat[statlen] = '\0';
+  fclose(fp);
+
+  // Skip pid and the command string. Note that we could be dealing with
+  // weird command names, e.g. user could decide to rename java launcher
+  // to "java 1.4.2 :)", then the stat file would look like
+  //                1234 (java 1.4.2 :)) R ... ...
+  // We don't really need to know the command string, just find the last
+  // occurrence of ")" and then start parsing from there. See bug 4726580.
+  s = strrchr(stat, ')');
+  if (s == nullptr) return -1;
+
+  // Skip blank chars
+  do { s++; } while (s && isspace(*s));
+
+  count = sscanf(s,"%c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu",
+                 &cdummy, &idummy, &idummy, &idummy, &idummy, &idummy,
+                 &ldummy, &ldummy, &ldummy, &ldummy, &ldummy,
+                 &user_time, &sys_time);
+  if (count != 13) return -1;
+
+  *utime = ((size_t)user_time) * (1000000000 / clock_tics_per_sec);
+  *stime = ((size_t)sys_time) * (1000000000 / clock_tics_per_sec);
+  return 0;
+}
+
 void os::current_thread_cpu_time_info(jvmtiTimerInfo *info_ptr) {
   info_ptr->max_value = ALL_64_BITS;       // will not wrap in less than 64 bits
   info_ptr->may_skip_backward = false;     // elapsed time not wall time

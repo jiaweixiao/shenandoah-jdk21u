@@ -543,7 +543,7 @@ public:
   ShenandoahGeneration*      global_generation() const { return _global_generation; }
   ShenandoahOldGeneration*   old_generation()    const { return _old_generation;    }
   ShenandoahGeneration*      generation_for(ShenandoahAffiliation affiliation) const;
-  const ShenandoahGenerationSizer* generation_sizer()  const { return &_generation_sizer;  }
+  ShenandoahGenerationSizer* generation_sizer()        { return &_generation_sizer; }
 
   size_t max_size_for(ShenandoahGeneration* generation) const;
   size_t min_size_for(ShenandoahGeneration* generation) const;

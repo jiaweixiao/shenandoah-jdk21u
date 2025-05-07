@@ -722,6 +722,9 @@ void ShenandoahControlThread::service_concurrent_cycle(ShenandoahHeap* heap,
           mmu_tracker->record_bootstrap(get_gc_id());
         } else {
           mmu_tracker->record_young(get_gc_id());
+          if(UseShenTuneYoungSize) {
+            heap->generation_sizer()->adaptive_recalculate_min_max_young_length(mmu_tracker);
+          }
         }
       }
     } else {

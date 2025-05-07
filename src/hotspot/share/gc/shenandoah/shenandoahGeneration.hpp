@@ -134,6 +134,8 @@ private:
   // capacity.
   void increase_capacity(size_t increment);
   void decrease_capacity(size_t decrement);
+  void set_max_capacity(size_t v);
+  void set_soft_max_capacity(size_t v);
 
   void log_status(const char* msg) const;
 

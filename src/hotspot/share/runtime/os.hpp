@@ -279,6 +279,8 @@ class os: AllStatic {
   static bool supports_vtime();
   static double elapsedVTime();
 
+  static jlong slow_thread_user_sys_time(Thread *thread, size_t *utime, size_t *stime);
+
   // [gc breakdown]
   // Return the number of page major/minor fault of the process.
   static void get_accum_majflt_minflt(long* majflt, long* minflt);
