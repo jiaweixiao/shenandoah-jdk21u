@@ -69,6 +69,11 @@ private:
   double _most_recent_periodic_time_stamp;
   double _most_recent_periodic_gc_time;
   double _most_recent_periodic_mutator_time;
+  // For far memory adaptive young size
+  double _most_recent_periodic_gc_user_time;
+  double _most_recent_periodic_gc_sys_time;
+  double _most_recent_periodic_mutator_user_time;
+  double _most_recent_periodic_mutator_sys_time;
 
   size_t _most_recent_gcid;
   uint _active_processors;
@@ -118,6 +123,7 @@ public:
   // GCPauseIntervalMillis and defaults to 5 seconds. This method computes
   // the MMU over the elapsed interval and records it in a running average.
   void report();
+  void report_farmem();
 
   // For far memory adaptive young size
   // Get decay avg from seqs.
