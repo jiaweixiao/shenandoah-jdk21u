@@ -81,6 +81,10 @@ ShenandoahMmuTracker::ShenandoahMmuTracker() :
     _most_recent_periodic_time_stamp(0.0),
     _most_recent_periodic_gc_time(0.0),
     _most_recent_periodic_mutator_time(0.0),
+    _most_recent_periodic_gc_user_time(0.0),
+    _most_recent_periodic_gc_sys_time(0.0),
+    _most_recent_periodic_mutator_user_time(0.0),
+    _most_recent_periodic_mutator_sys_time(0.0),
     _mmu_periodic_task(new ShenandoahMmuTask(this)),
     _young_gcs(0),
     _young_gc_user_time_seq(ShenTuneYoungInterval/*length*/, 0.5 /*decay factor*/),
@@ -259,6 +263,11 @@ void ShenandoahMmuTracker::record_full(size_t gcid) {
 }
 
 void ShenandoahMmuTracker::report() {
+  if (UseShenTuneYoungSize || UseShenFixYoungSize) {
+    report_farmem();
+    return;
+  }
+
   // This is only called by the periodic thread.
   double current = os::elapsedTime();
   double time_delta = current - _most_recent_periodic_time_stamp;
@@ -278,25 +287,36 @@ void ShenandoahMmuTracker::report() {
   log_info(gc)("Periodic Sample: GCU = %.3f%%, MU = %.3f%% during most recent %.1fs", gcu * 100, mu * 100, time_delta);
 }
 
-// void ShenandoahMmuTracker::report_farmem() {
-//   // This is only called by the periodic thread.
-//   double current = os::elapsedTime();
-//   double time_delta = current - _most_recent_periodic_time_stamp;
-//   _most_recent_periodic_time_stamp = current;
+void ShenandoahMmuTracker::report_farmem() {
+  // This is only called by the periodic thread.
+  double current = os::elapsedTime();
+  double time_delta = current - _most_recent_periodic_time_stamp;
+  _most_recent_periodic_time_stamp = current;
 
-//   double gc_time, mutator_time;
-//   fetch_cpu_times(gc_time, mutator_time);
+  double gc_thread_user_time, gc_thread_sys_time, mutator_thread_user_time, mutator_thread_sys_time;
+  fetch_user_sys_times(gc_thread_user_time, gc_thread_sys_time, mutator_thread_user_time, mutator_thread_sys_time);
 
-//   double gc_delta = gc_time - _most_recent_periodic_gc_time;
-//   _most_recent_periodic_gc_time = gc_time;
+  double gc_time = gc_thread_user_time + gc_thread_sys_time;
+  double gc_delta = gc_time - _most_recent_periodic_gc_time;
+  double gc_user_delta = gc_thread_user_time - _most_recent_periodic_gc_user_time;
+  double gc_sys_delta = gc_thread_sys_time - _most_recent_periodic_gc_sys_time;
+  _most_recent_periodic_gc_time = gc_time;
+  _most_recent_periodic_gc_user_time = gc_thread_user_time;
+  _most_recent_periodic_gc_sys_time = gc_thread_sys_time;
 
-//   double mutator_delta = mutator_time - _most_recent_periodic_mutator_time;
-//   _most_recent_periodic_mutator_time = mutator_time;
+  double mutator_time = mutator_thread_user_time + mutator_thread_sys_time;
+  double mutator_delta = mutator_time - _most_recent_periodic_mutator_time;
+  double mutator_user_delta = mutator_thread_user_time - _most_recent_periodic_mutator_user_time;
+  double mutator_sys_delta = mutator_thread_sys_time - _most_recent_periodic_mutator_sys_time;
+  _most_recent_periodic_mutator_time = mutator_time;
+  _most_recent_periodic_mutator_user_time = mutator_thread_user_time;
+  _most_recent_periodic_mutator_sys_time = mutator_thread_sys_time;
 
-//   double mu = mutator_delta / (_active_processors * time_delta);
-//   double gcu = gc_delta / (_active_processors * time_delta);
-//   log_info(gc)("Periodic Sample: GCU = %.3f%%, MU = %.3f%% during most recent %.1fs", gcu * 100, mu * 100, time_delta);
-// }
+  double mu = mutator_delta / (_active_processors * time_delta);
+  double gcu = gc_delta / (_active_processors * time_delta);
+  log_info(gc)("Periodic Sample: GCU = %.3f%%, MU = %.3f%% during most recent %.1fs", gcu * 100, mu * 100, time_delta);
+  log_info(gc)("Periodic Sample: gc_utime = %.3fs, gc_stime = %.3fs, mu_utime = %.3fs, mu_stime = %.3fs", gc_user_delta, gc_sys_delta, mutator_user_delta, mutator_sys_delta);
+}
 
 void ShenandoahMmuTracker::initialize() {
   // initialize static data
