@@ -127,7 +127,7 @@ void ShenandoahMmuTracker::fetch_user_sys_times(double &gc_user_time, double &gc
 }
 
 void ShenandoahMmuTracker::update_utilization(size_t gcid, const char* msg, bool is_young) {
-  if (UseShenTuneYoungSize) {
+  if (UseShenTuneYoungSize || UseShenFixYoungSize) {
     update_utilization_farmem(gcid, msg, is_young);
     return;
   }
@@ -204,6 +204,8 @@ void ShenandoahMmuTracker::update_utilization_farmem(size_t gcid, const char* ms
                        msg, _most_recent_gcu * 100, _most_recent_mu * 100, gc_cycle_period);
     log_info(gc, ergo)("GCK2U: %.1f%%, MK2U: %.1f%%, K2U: %.1f%%",
                        gc_sys_time / gc_user_time * 100, mutator_sys_time / mutator_user_time * 100, (gc_sys_time + mutator_sys_time) / (gc_user_time + mutator_user_time) * 100);
+    log_info(gc, ergo)("gc_utime: %.1fms, gc_stime: %.1fms, mut_utime: %.1fms, mut_stime: %.1fms, period: %.3fs",
+                       gc_user_time*1000, gc_sys_time*1000, mutator_user_time*1000, mutator_sys_time*1000, gc_cycle_period);
     log_info(gc, ergo)("most recent mut user: %.1fs, sys: %.1fs",
                        _most_recent_mutator_user_time, _most_recent_mutator_sys_time);
   }
@@ -495,13 +497,16 @@ void ShenandoahGenerationSizer::adaptive_recalculate_min_max_young_length(Shenan
   double mut_user_time = mmu_tracker->young_mutator_user_time_davg();
   double mut_sys_time = mmu_tracker->young_mutator_sys_time_davg();
 
-  if (gc_user_time > mut_user_time * ShenTuneYoungMMU && gc_period_time < 0.1) {
-    // Too many user time on gc than mutator, increase young by step
+  if (gc_user_time > mmu_tracker->active_processors() * gc_period_time * ShenTuneYoungMMU) {
+    // Another option 1: keep young_avail / old_avail < 0.05
+    //         option 2: increase 1/10 of available in old gen
+    // Too many user time on gc, increase young by step
     increase_bytes = ShenTuneYoungIncreStepRegions * region_size_bytes;
     young_size_bytes_new = young_size_bytes_orig + increase_bytes;
     if (young_size_bytes_new >= heap_size_bytes || young_size_bytes_new <= 0)
       increase_bytes = 0;
-  } else if (gc_sys_time > gc_user_time * ShenTuneYoungGCK2U) {
+  } else if (gc_sys_time > gc_user_time * ShenTuneYoungGCK2U &&
+             mut_sys_time > mut_user_time * ShenTuneYoungMUTK2U) {
     // The WSS of young gc is large, decrease young by ratio
     double mut_decre = 2*mut_sys_time > mut_user_time ? young_decre_factor(mut_user_time, mut_sys_time) : 0;
     double gc_decre = 2*gc_sys_time > gc_user_time ? young_decre_factor(gc_user_time, gc_sys_time) : 0;

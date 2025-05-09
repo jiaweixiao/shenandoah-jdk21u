@@ -97,6 +97,8 @@ public:
   // This enrolls the periodic task after everything is initialized.
   void initialize();
 
+  int active_processors() { return _active_processors; };
+
   // At completion of each GC cycle (not including interrupted cycles), we invoke one of the following to record the
   // GC utilization during this cycle.  Incremental efforts spent in an interrupted GC cycle will be accumulated into
   // the CPU time reports for the subsequent completed [degenerated or full] GC cycle.
