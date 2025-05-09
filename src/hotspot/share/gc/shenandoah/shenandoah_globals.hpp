@@ -232,10 +232,13 @@
           "Step to increase young size in regions")                         \
                                                                             \
   product(double, ShenTuneYoungMMU, 1, EXPERIMENTAL,                        \
-          "gc_user_time / mut_user_time < ShenTuneYoungMMU")                \
+          "gc_user_time / period < ShenTuneYoungMMU")                       \
                                                                             \
   product(double, ShenTuneYoungGCK2U, 1, EXPERIMENTAL,                      \
           "gc_sys_time / gc_uesr_time < ShenTuneYoungGCK2U")                \
+                                                                            \
+  product(double, ShenTuneYoungMUTK2U, 1, EXPERIMENTAL,                     \
+          "mut_sys_time / mut_uesr_time < ShenTuneYoungMUTK2U")             \
                                                                             \
   product(uintx, ShenandoahAllocationThreshold, 0, EXPERIMENTAL,            \
           "How many new allocations should happen since the last GC cycle " \
