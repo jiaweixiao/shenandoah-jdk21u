@@ -240,6 +240,12 @@
   product(double, ShenTuneYoungMUTK2U, 1, EXPERIMENTAL,                     \
           "mut_sys_time / mut_uesr_time < ShenTuneYoungMUTK2U")             \
                                                                             \
+  product(double, ShenTuneConcGCThreadsYoungUtil, 0, EXPERIMENTAL,          \
+          "young_used / young_max < ShenTuneConcGCThreadsYoungUtil")        \
+                                                                            \
+  product(uintx, ShenTuneConcGCThreadsMinWorkers, 0, EXPERIMENTAL,          \
+          "Min number of conc gc threads")                                  \
+                                                                            \
   product(uintx, ShenandoahAllocationThreshold, 0, EXPERIMENTAL,            \
           "How many new allocations should happen since the last GC cycle " \
           "before some heuristics trigger the collection. In percents of "  \

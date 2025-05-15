@@ -43,7 +43,9 @@ uint ShenandoahWorkerPolicy::_prev_par_update_ref  = 0;
 uint ShenandoahWorkerPolicy::_prev_conc_cleanup    = 0;
 uint ShenandoahWorkerPolicy::_prev_conc_reset      = 0;
 size_t ShenandoahWorkerPolicy::_young_used         = 0;
+size_t ShenandoahWorkerPolicy::_young_max          = 0;
 size_t ShenandoahWorkerPolicy::_prev_young_used    = 0;
+size_t ShenandoahWorkerPolicy::_prev_young_max     = 0;
 uint   ShenandoahWorkerPolicy::_prev_conc_workers  = 0;
 
 uint ShenandoahWorkerPolicy::calc_workers_for_init_marking() {
@@ -169,17 +171,34 @@ uint ShenandoahWorkerPolicy::calc_workers_for_conc_reset() {
 
 void ShenandoahWorkerPolicy::update_conc_thread_num(){
   uint new_conc_workers = _prev_conc_workers;
-  if (_young_used > _prev_young_used){
-    if(_young_used - _prev_young_used > 512 * M){
+
+  if (ShenTuneConcGCThreadsYoungUtil > 0) {
+    if (_young_used > _young_max * ShenTuneConcGCThreadsYoungUtil) {
       new_conc_workers *= 2;
     } else {
-      new_conc_workers += 1;
+      new_conc_workers -= 2;
     }
   } else {
-    new_conc_workers -= 2;
+    if (_young_used > _prev_young_used){
+      if(_young_used - _prev_young_used > 512 * M){
+        new_conc_workers *= 2;
+      } else {
+        new_conc_workers += 1;
+      }
+    } else {
+      new_conc_workers -= 2;
+    }
   }
 
-  _prev_conc_workers = MAX2(5U, MIN2(new_conc_workers, ConcGCThreads));
+  log_info(gc, ergo)("tune conc gc threads: young util %.2f, prev workers %u, new workers %u",
+          (float)_young_used / (float)_young_max, _prev_conc_workers, new_conc_workers);
+
+  if (ShenTuneConcGCThreadsMinWorkers > 0) {
+    uint minworkers = ShenTuneConcGCThreadsMinWorkers;
+    _prev_conc_workers = MAX2(minworkers, MIN2(new_conc_workers, ConcGCThreads));
+  } else {
+    _prev_conc_workers = MAX2(5U, MIN2(new_conc_workers, ConcGCThreads));
+  }
 }
 
 

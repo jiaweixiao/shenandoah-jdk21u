@@ -509,6 +509,7 @@ void ShenandoahGenerationSizer::adaptive_recalculate_min_max_young_length(Shenan
   size_t heap_size_bytes = heap->max_capacity();
   size_t young_size_bytes_orig = young_gen->soft_max_capacity();
   size_t young_size_bytes_new = 0;
+  size_t young_reserve_bytes = young_size_bytes_orig * ShenandoahYoungMinFreeThreshold / 100;
   size_t increase_bytes = 0, decrease_bytes = 0;
 
   double gc_user_time = mmu_tracker->young_gc_user_time_davg();
@@ -517,11 +518,10 @@ void ShenandoahGenerationSizer::adaptive_recalculate_min_max_young_length(Shenan
   double mut_user_time = mmu_tracker->young_mutator_user_time_davg();
   double mut_sys_time = mmu_tracker->young_mutator_sys_time_davg();
 
-  if (gc_user_time > mmu_tracker->active_processors() * gc_period_time * ShenTuneYoungMMU) {
-    // Another option 1: keep young_avail / old_avail < 0.05
-    //         option 2: increase 1/10 of available in old gen
-    // Too many user time on gc, increase young by step
-    increase_bytes = ShenTuneYoungIncreStepRegions * region_size_bytes;
+  if (young_gen->available() < young_reserve_bytes && ShenandoahYoungMinFreeThreshold < 100) {
+    // Reserve young min free
+    increase_bytes = young_gen->used() * 100 / (100 - ShenandoahYoungMinFreeThreshold) - young_size_bytes_orig;
+    increase_bytes = align_up(increase_bytes, region_size_bytes);
     young_size_bytes_new = young_size_bytes_orig + increase_bytes;
     if (young_size_bytes_new >= heap_size_bytes || young_size_bytes_new <= 0)
       increase_bytes = 0;
@@ -537,6 +537,14 @@ void ShenandoahGenerationSizer::adaptive_recalculate_min_max_young_length(Shenan
     young_size_bytes_new = young_size_bytes_orig - decrease_bytes;
     if (young_size_bytes_new < region_size_bytes || young_size_bytes_new <= 0)
       decrease_bytes = 0;
+  } else if (gc_user_time > mmu_tracker->active_processors() * gc_period_time * ShenTuneYoungMMU) {
+    // Too many user time on gc, increase young by step
+    // Another option 1: keep young_avail / old_avail < 0.05
+    //         option 2: increase 1/10 of available in old gen
+    increase_bytes = ShenTuneYoungIncreStepRegions * region_size_bytes;
+    young_size_bytes_new = young_size_bytes_orig + increase_bytes;
+    if (young_size_bytes_new >= heap_size_bytes || young_size_bytes_new <= 0)
+      increase_bytes = 0;
   }
 
   if (increase_bytes > 0 || decrease_bytes > 0) {

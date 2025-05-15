@@ -288,13 +288,12 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
                        byte_size_in_proper_unit(old_available), proper_unit_for_byte_size(old_available),
                        byte_size_in_proper_unit(young_available), proper_unit_for_byte_size(young_available));
     
-    stringStream stream;
-    log_info(gc)("end of concurrent gc");
-    heap->free_set()->print_on_summary(&stream);
-    log_info(gc)("%s", stream.freeze());
+    // stringStream stream;
+    // log_info(gc)("end of concurrent gc");
+    // heap->free_set()->print_on_summary(&stream);
+    // log_info(gc)("%s", stream.freeze());
     if (UseShenTuneConcGCThreads) {
-      size_t young_used = young_gen->used();
-      ShenandoahWorkerPolicy::set_young_used(young_used);
+      ShenandoahWorkerPolicy::set_young_used(young_gen->used(), young_gen->max_capacity());
       ShenandoahWorkerPolicy::update_conc_thread_num();
     }
   }

@@ -1305,12 +1305,12 @@ void ShenandoahFreeSet::rebuild_simple(size_t young_cset_regions, size_t old_cse
     old_region_deficit = MIN2(old_region_deficit, young_unaffiliated_regions);
   }
 
-  log_info(gc)("in rebuild simple");
-  {
-    stringStream ss;
-    print_on_summary(&ss);
-    log_info(gc)("%s", ss.freeze());
-  }
+  // log_info(gc)("in rebuild simple");
+  // {
+  //   stringStream ss;
+  //   print_on_summary(&ss);
+  //   log_info(gc)("%s", ss.freeze());
+  // }
 
   _heap->set_old_region_deficit(old_region_deficit);
   _heap->set_old_region_surplus(old_region_surplus);
@@ -1394,11 +1394,11 @@ void ShenandoahFreeSet::rebuild_simple(size_t young_cset_regions, size_t old_cse
   _free_sets.assert_bounds();
   log_status();
 
-  {
-    stringStream ss;
-    print_on_summary(&ss);
-    log_info(gc)("%s", ss.freeze());
-  }
+  // {
+  //   stringStream ss;
+  //   print_on_summary(&ss);
+  //   log_info(gc)("%s", ss.freeze());
+  // }
 }
 
 // Having placed all regions that have allocation capacity into the mutator set if they identify as is_young()

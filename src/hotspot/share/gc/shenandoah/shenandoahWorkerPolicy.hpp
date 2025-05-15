@@ -43,7 +43,9 @@ private:
   static uint _prev_conc_reset;
 
   static size_t _young_used;
+  static size_t _young_max;
   static size_t _prev_young_used;
+  static size_t _prev_young_max;
   static uint _prev_conc_workers;
 
 public:
@@ -90,9 +92,11 @@ public:
                                             uintx active_workers,
                                             uintx application_workers);
 
-  static void set_young_used(size_t young_used) {
+  static void set_young_used(size_t young_used, size_t young_max) {
     _prev_young_used = _young_used;
-    _young_used = young_used;  
+    _young_used = young_used;
+    _prev_young_max = _young_max;
+    _young_max = young_max;
   }
 
   static void update_conc_thread_num();
