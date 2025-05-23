@@ -942,6 +942,11 @@ void Threads::destroy_vm() {
 
   notify_vm_shutdown();
 
+  // [gc breakdown][region majflt]
+  if (UseProfileRegionMajflt) {
+    os::adc_advise_free_bitmap();
+  }
+
   // exit_globals() will delete tty
   exit_globals();
 
