@@ -33,6 +33,7 @@
 #include "gc/shenandoah/shenandoahGeneration.hpp"
 #include "gc/shenandoah/shenandoahGenerationalHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionClosures.hpp"
 #include "gc/shenandoah/shenandoahMetrics.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahOldGeneration.hpp"
@@ -191,6 +192,11 @@ void ShenandoahDegenGC::op_degenerated() {
         op_finish_mark();
       }
       assert(!heap->cancelled_gc(), "STW mark can not OOM");
+
+      if (UseProfileDeadPageInOld) {
+        ShenandoahGCPhase free_phase(ShenandoahPhaseTimings::free_dead_range);
+        ShenandoahHeap::heap()->free_dead_range(false);
+      }
 
       /* Degen select Collection Set. etc. */
       op_prepare_evacuation();

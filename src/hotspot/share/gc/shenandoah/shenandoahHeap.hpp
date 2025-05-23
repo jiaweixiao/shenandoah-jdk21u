@@ -476,6 +476,8 @@ protected:
 
 private:
   // GC support
+  // Free dead range
+  void free_dead_range(bool concurrent);
   // Evacuation
   virtual void evacuate_collection_set(bool concurrent);
   // Concurrent root processing

@@ -116,6 +116,13 @@ bool ShenandoahOldGC::collect(GCCause::Cause cause) {
   // Complete marking under STW
   vmop_entry_final_mark();
 
+  // Scan and free dead ranges of partial free region.
+  if (UseProfileDeadPageInOld) {
+    entry_free_dead_range();
+    // Debug with stw vmop
+    // vmop_entry_free_dead_range();
+  }
+
   if (_generation->is_concurrent_mark_in_progress()) {
     assert(heap->cancelled_gc(), "Safepoint operation observed gc cancellation");
     // GC may have been cancelled before final mark, but after the preceding cancellation check.

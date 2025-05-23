@@ -78,6 +78,7 @@ private:
   void do_it(GCCause::Cause gc_cause);
 
   void phase1_mark_heap();
+  void phase1_free_dead_range();
   void phase2_calculate_target_addresses(ShenandoahHeapRegionSet** worker_slices);
   void phase3_update_references();
   void phase4_compact_objects(ShenandoahHeapRegionSet** worker_slices);

@@ -244,6 +244,9 @@ void ShenandoahFullGC::do_it(GCCause::Cause gc_cause) {
     // until all phases run together.
     ShenandoahHeapLocker lock(heap->lock());
 
+    if (UseProfileDeadPageInOld)
+      phase1_free_dead_range();
+
     phase2_calculate_target_addresses(worker_slices);
 
     OrderAccess::fence();
@@ -304,6 +307,13 @@ void ShenandoahFullGC::phase1_mark_heap() {
   if (ShenandoahHeap::heap()->mode()->is_generational()) {
     ShenandoahGenerationalFullGC::log_live_in_old(heap);
   }
+}
+
+void ShenandoahFullGC::phase1_free_dead_range() {
+  GCTraceTime(Info, gc, phases) time("Phase 1: Free Dead Range", _gc_timer);
+  ShenandoahGCPhase free_phase(ShenandoahPhaseTimings::free_dead_range);
+
+  ShenandoahHeap::heap()->free_dead_range(false);
 }
 
 class ShenandoahPrepareForCompactionObjectClosure : public ObjectClosure {
@@ -990,6 +1000,32 @@ public:
     // Reclaim regular regions that became empty
     if (r->is_regular() && live == 0) {
       r->make_trash();
+    }
+
+    // Free Dead Range
+    if (UseProfileDeadPageInOld && UseFreeDeadPage && live > 0 && r->free() >= 4096) {
+      (r->top(), r->end());
+      uintptr_t dead_page_start = (((uintptr_t)r->top()) + 4096 -1) >> 12;
+      uintptr_t live_page_start = ((uintptr_t)r->end()) >> 12;
+      int tmp_dead_pages = live_page_start - dead_page_start;
+      size_t stt = os::rdtsc();
+      // DEBUG
+      // Copy::zero_to_bytes((char*)r->top(), (uintptr_t)r->end() - (uintptr_t)r->top());
+      // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
+      if (UseProfileRegionMajflt) {
+        if(os::adc_advise_free_range(dead_page_start << 12, live_page_start << 12)) {
+          log_info(gc)("[PostCompact] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, live_page_start << 12);
+          os::abort();
+        }
+      } else if (UseMadvFree) {
+        os::free_page_frames(true,
+          (char*)(dead_page_start << 12), tmp_dead_pages << 12);
+      } else if (UseMadvDontneed) {
+        os::free_page_frames(false,
+          (char*)(dead_page_start << 12), tmp_dead_pages << 12);
+      }
+      r->add_free_deadrange_cycle(os::rdtsc() - stt);
+      r->add_deadrange_count(1);
     }
 
     // Recycle all trash regions

@@ -35,12 +35,14 @@ class ShenandoahGeneration;
 
 class VM_ShenandoahInitMark;
 class VM_ShenandoahFinalMarkStartEvac;
+class VM_ShenandoahFreeDeadRange;
 class VM_ShenandoahInitUpdateRefs;
 class VM_ShenandoahFinalUpdateRefs;
 
 class ShenandoahConcurrentGC : public ShenandoahGC {
   friend class VM_ShenandoahInitMark;
   friend class VM_ShenandoahFinalMarkStartEvac;
+  friend class VM_ShenandoahFreeDeadRange;
   friend class VM_ShenandoahInitUpdateRefs;
   friend class VM_ShenandoahFinalUpdateRefs;
   friend class VM_ShenandoahFinalRoots;
@@ -67,6 +69,7 @@ protected:
   // call the entry method below
   void vmop_entry_init_mark();
   void vmop_entry_final_mark();
+  void vmop_entry_free_dead_range();
   void vmop_entry_init_update_refs();
   void vmop_entry_final_update_refs();
   void vmop_entry_final_roots();
@@ -75,6 +78,8 @@ protected:
   // and workers for net VM operation
   void entry_init_mark();
   void entry_final_mark();
+  // Free dead range
+  void entry_pause_free_dead_range();
   void entry_init_update_refs();
   void entry_final_update_refs();
   void entry_final_roots();
@@ -95,6 +100,8 @@ protected:
   void entry_update_thread_roots();
   void entry_update_refs();
   void entry_cleanup_complete();
+  // Free dead range
+  void entry_free_dead_range();
 
   // Called when the collection set is empty, but the generational mode has regions to promote in place
   void entry_promote_in_place();
@@ -105,6 +112,7 @@ protected:
   void op_mark_roots();
   void op_mark();
   virtual void op_final_mark();
+  void op_free_dead_range(bool concurrent);
   void op_thread_roots();
   void op_weak_refs();
   void op_weak_roots();

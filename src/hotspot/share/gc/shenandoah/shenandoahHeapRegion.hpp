@@ -269,10 +269,11 @@ private:
   bool _needs_bitmap_reset;
 
   size_t _trashed_count;
-  // size_t _deadrange_count;
-  // size_t _free_emptyregion_cycle;
-  // size_t _scan_deadrange_cycle;
-  // size_t _free_deadrange_cycle;
+  size_t _deadrange_count;
+  size_t _free_emptyregion_cycle;
+  size_t _scan_deadrange_cycle;
+  size_t _free_deadrange_cycle;
+  // uint _worker_id;
 
 public:
   ShenandoahHeapRegion(HeapWord* start, size_t index, bool committed);
@@ -445,6 +446,9 @@ public:
   size_t used_before_promote() const { return byte_size(bottom(), get_top_before_promote()); }
   size_t free() const           { return byte_size(top(),    end()); }
 
+  // uint worker_id() const { return _worker_id; }
+  // void set_worker(uint id) { _worker_id = id; }
+
   // Does this region contain this address?
   bool contains(HeapWord* p) const {
     return (bottom() <= p) && (p < top());
@@ -498,13 +502,13 @@ public:
   }
 
   inline size_t trashed_count() { return _trashed_count; }
-  // inline size_t scan_deadrange_cycle() { return _scan_deadrange_cycle; }
-  // inline size_t free_deadrange_cycle() { return _free_deadrange_cycle; }
-  // inline size_t deadrange_count() { return _deadrange_count; }
-  // inline size_t free_emptyregion_cycle() { return _free_emptyregion_cycle; }
-  // inline void add_scan_deadrange_cycle(size_t c) { _scan_deadrange_cycle += c; }
-  // inline void add_free_deadrange_cycle(size_t c) { _free_deadrange_cycle += c; }
-  // inline void add_deadrange_count(size_t c) { _deadrange_count += c; }
+  inline size_t scan_deadrange_cycle() { return _scan_deadrange_cycle; }
+  inline size_t free_deadrange_cycle() { return _free_deadrange_cycle; }
+  inline size_t deadrange_count() { return _deadrange_count; }
+  inline size_t free_emptyregion_cycle() { return _free_emptyregion_cycle; }
+  inline void add_scan_deadrange_cycle(size_t c) { _scan_deadrange_cycle += c; }
+  inline void add_free_deadrange_cycle(size_t c) { _free_deadrange_cycle += c; }
+  inline void add_deadrange_count(size_t c) { _deadrange_count += c; }
 
 private:
   void decrement_humongous_waste() const;

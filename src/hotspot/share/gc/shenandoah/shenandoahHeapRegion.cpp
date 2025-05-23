@@ -83,11 +83,11 @@ ShenandoahHeapRegion::ShenandoahHeapRegion(HeapWord* start, size_t index, bool c
   _youth(0),
 #endif // SHENANDOAH_CENSUS_NOISE
   _needs_bitmap_reset(false),
-  _trashed_count(0)
-  // _deadrange_count(0),
-  // _free_emptyregion_cycle(0),
-  // _scan_deadrange_cycle(0),
-  // _free_deadrange_cycle(0)
+  _trashed_count(0),
+  _deadrange_count(0),
+  _free_emptyregion_cycle(0),
+  _scan_deadrange_cycle(0),
+  _free_deadrange_cycle(0)
   {
 
   assert(Universe::on_page_boundary(_bottom) && Universe::on_page_boundary(_end),
@@ -326,7 +326,7 @@ void ShenandoahHeapRegion::make_trash() {
       // [gc breakdown][region majflt][swapout garbage]
       // Add a free region.
       if (UseFreeEmptyRegion) {
-        // size_t stt = os::rdtsc();
+        size_t stt = os::rdtsc();
         if (UseProfileRegionMajflt) {
           if(os::adc_advise_free_range((uintptr_t)_bottom, (uintptr_t)_end)) {
             log_info(gc)("[make_trash] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, p2i(_bottom), p2i(_end));
@@ -350,7 +350,7 @@ void ShenandoahHeapRegion::make_trash() {
         } else if (UseMadvDontneed)
           os::free_page_frames(false, (char*)_bottom,
                   ShenandoahHeapRegion::RegionSizeBytes);
-        // _free_emptyregion_cycle += os::rdtsc() - stt;
+        _free_emptyregion_cycle += os::rdtsc() - stt;
       }
       _trashed_count += 1;
 

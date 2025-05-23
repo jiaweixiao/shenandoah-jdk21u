@@ -43,6 +43,10 @@ uint ShenandoahWorkerPolicy::calc_workers_for_final_marking() {
   return ParallelGCThreads;
 }
 
+uint ShenandoahWorkerPolicy::calc_workers_for_free_dead_range() {
+  return ConcGCThreads;
+}
+
 uint ShenandoahWorkerPolicy::calc_workers_for_conc_refs_processing() {
   return ConcGCThreads;
 }

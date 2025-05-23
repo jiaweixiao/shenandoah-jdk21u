@@ -41,6 +41,9 @@ public:
   // Calculate the number of workers for final marking
   static uint calc_workers_for_final_marking();
 
+  // Calculate the number of workers for free dead range
+  static uint calc_workers_for_free_dead_range();
+
   // Calculate workers for concurrent root processing
   static uint calc_workers_for_conc_root_processing();
 

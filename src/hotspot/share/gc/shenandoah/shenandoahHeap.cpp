@@ -1263,6 +1263,14 @@ private:
   ShenandoahGCStatePropagator _propagator;
 };
 
+void ShenandoahHeap::free_dead_range(bool concurrent) {
+  ShenandoahRegionIterator regions;
+  ShenandoahHeap *heap = ShenandoahHeap::heap();
+  ShenandoahDeadRangeCounter res(heap->marking_context(), heap->workers()->active_workers());
+  ShenandoahFreeDeadRangeTask task(this, &regions, &res, concurrent);
+  workers()->run_task(&task);
+}
+
 void ShenandoahHeap::evacuate_collection_set(bool concurrent) {
   ShenandoahEvacuationTask task(this, _collection_set, concurrent);
   workers()->run_task(&task);
@@ -1913,8 +1921,10 @@ void ShenandoahHeap::keep_alive(oop obj) {
 }
 
 void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure* blk) const {
+  // blk->set_worker(0);
   for (size_t i = 0; i < num_regions(); i++) {
     ShenandoahHeapRegion* current = get_region(i);
+    // current->set_worker(0);
     blk->heap_region_do(current);
   }
 }
@@ -1947,7 +1957,9 @@ public:
 
       for (size_t i = cur; i < end; i++) {
         ShenandoahHeapRegion* current = _heap->get_region(i);
-        _blk->set_worker(worker_id);
+        // // TODO: avoid to set per closure, region do shares it.
+        // current->set_worker(worker_id);
+        // _blk->set_worker(worker_id);
         _blk->heap_region_do(current);
       }
     }
@@ -2178,17 +2190,16 @@ void ShenandoahHeap::stop() {
 
   // Dump region trashed count
   size_t count = 0, dead_count = 0;
-  // size_t free_empty_cycle = 0, scan_dead_cycle = 0, free_dead_cycle = 0;
+  size_t free_empty_cycle = 0, scan_dead_cycle = 0, free_dead_cycle = 0;
   for (size_t i = 0; i < num_regions(); i++) {
     count += get_region(i)->trashed_count();
-    // free_empty_cycle += get_region(i)->free_emptyregion_cycle();
-    // dead_count += get_region(i)->deadrange_count();
-    // scan_dead_cycle += get_region(i)->scan_deadrange_cycle();
-    // free_dead_cycle += get_region(i)->free_deadrange_cycle();
+    free_empty_cycle += get_region(i)->free_emptyregion_cycle();
+    dead_count += get_region(i)->deadrange_count();
+    scan_dead_cycle += get_region(i)->scan_deadrange_cycle();
+    free_dead_cycle += get_region(i)->free_deadrange_cycle();
   }
-  log_info(gc)("Free Regions (sum): %lu", count);
-  // log_info(gc)("Cost of Empty Region: %.2fus", free_empty_cycle/2.4/1000/count);
-  // log_info(gc)("Cost of Dead Range: avg scan %.2fus, avg free %.2fus, count %lu", scan_dead_cycle/2.4/1000/dead_count, free_dead_cycle/2.4/1000/dead_count, dead_count);
+  log_info(gc)("Cost of Empty Region: avg %.2fus, count %lu", free_empty_cycle/2.4/1000/count, count);
+  log_info(gc)("Cost of Dead Range: avg scan %.2fus, avg free %.2fus, count %lu", scan_dead_cycle/2.4/1000/dead_count, free_dead_cycle/2.4/1000/dead_count, dead_count);
 }
 
 void ShenandoahHeap::stw_unload_classes(bool full_gc) {

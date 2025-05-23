@@ -69,6 +69,10 @@ class outputStream;
   SHENANDOAH_PAR_PHASE_DO(conc_mark,                "  CM: ", f)                       \
   f(conc_mark_satb_flush,                           "  Flush SATB")                    \
                                                                                        \
+  f(conc_free_dead_range,                           "Concurrent Free Dead Range")      \
+                                                                                       \
+  f(free_dead_range,                                "Free Dead Range")                 \
+                                                                                       \
   f(final_mark_gross,                               "Pause Final Mark (G)")            \
   f(final_mark,                                     "Pause Final Mark (N)")            \
   f(finish_mark,                                    "  Finish Mark")                   \
