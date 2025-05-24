@@ -102,6 +102,7 @@ private:
   // Here each worker claims one of the old generation regions.
   void account_dead_ranges(ShenandoahHeapRegion* r, HeapWord* bottom, HeapWord* limit) {
     // uint worker_id = r->worker_id();
+    // uint worker_id = _worker_id;
     // if (((uintptr_t)limit) - ((uintptr_t)bottom) < 4096)
     //   return;
     // assert(worker_id < _num_workers, "Dead Range worker id overflow");

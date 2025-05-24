@@ -218,6 +218,8 @@ void ShenandoahFreeDeadRangeClosure::account_dead_ranges(ShenandoahHeapRegion* r
       // log_info(gc)("dead range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(dead_obj), p2i(start));
     } else { // Object is marked
       start += obj->size();
+      // Debug profile cost of scan
+      // start = _ctx->get_next_marked_addr(start+1, limit);
     }
   }
   r->add_scan_deadrange_cycle(os::rdtsc() - stt_cycle - tmp_free_cycle);

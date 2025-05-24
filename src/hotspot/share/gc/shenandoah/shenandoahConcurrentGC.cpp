@@ -144,9 +144,9 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
   // Scan and free dead ranges of partial free region.
   if (UseProfileDeadPageInOld) {
-    entry_free_dead_range();
+    // entry_free_dead_range();
     // Debug with stw vmop
-    // vmop_entry_free_dead_range();
+    vmop_entry_free_dead_range();
   }
 
   // If the GC was cancelled before final mark, nothing happens on the safepoint. We are still

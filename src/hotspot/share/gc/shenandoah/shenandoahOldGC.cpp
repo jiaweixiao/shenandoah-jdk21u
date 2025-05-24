@@ -118,9 +118,9 @@ bool ShenandoahOldGC::collect(GCCause::Cause cause) {
 
   // Scan and free dead ranges of partial free region.
   if (UseProfileDeadPageInOld) {
-    entry_free_dead_range();
+    // entry_free_dead_range();
     // Debug with stw vmop
-    // vmop_entry_free_dead_range();
+    vmop_entry_free_dead_range();
   }
 
   if (_generation->is_concurrent_mark_in_progress()) {
