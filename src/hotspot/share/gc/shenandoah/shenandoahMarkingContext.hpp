@@ -26,6 +26,7 @@
 #ifndef SHARE_GC_SHENANDOAH_SHENANDOAHMARKINGCONTEXT_HPP
 #define SHARE_GC_SHENANDOAH_SHENANDOAHMARKINGCONTEXT_HPP
 
+#include "gc/shared/markBitMap.hpp"
 #include "gc/shenandoah/shenandoahMarkBitMap.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "memory/allocation.hpp"
@@ -42,6 +43,7 @@ class ShenandoahMarkingContext : public CHeapObj<mtGC> {
 private:
   // Marking bitmap
   ShenandoahMarkBitMap _mark_bit_map;
+  MarkBitMap _mark_end_bit_map;
 
   HeapWord** const _top_bitmaps;
   HeapWord** const _top_at_mark_starts_base;
@@ -51,6 +53,7 @@ private:
 
 public:
   ShenandoahMarkingContext(MemRegion heap_region, MemRegion bitmap_region, size_t num_regions);
+  ShenandoahMarkingContext(MemRegion heap_region, MemRegion bitmap_region, MemRegion end_bitmap_region, size_t num_regions);
 
   /*
    * Marks the object. Returns true if the object has not been marked before and has
@@ -68,6 +71,7 @@ public:
   inline bool is_marked_strong_or_old(oop obj) const;
 
   inline HeapWord* get_next_marked_addr(const HeapWord* addr, const HeapWord* limit) const;
+  inline HeapWord* get_next_marked_end_addr(const HeapWord* const start, HeapWord* const limit) const;
 
   inline bool allocated_after_mark_start(oop obj) const;
   inline bool allocated_after_mark_start(const HeapWord* addr) const;

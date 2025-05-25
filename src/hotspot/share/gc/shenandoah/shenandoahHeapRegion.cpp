@@ -327,6 +327,7 @@ void ShenandoahHeapRegion::make_trash() {
       // Add a free region.
       if (UseFreeEmptyRegion) {
         size_t stt = os::rdtsc();
+        // Copy::zero_to_bytes((char*)_bottom, ShenandoahHeapRegion::RegionSizeBytes);
         if (UseProfileRegionMajflt) {
           if(os::adc_advise_free_range((uintptr_t)_bottom, (uintptr_t)_end)) {
             log_info(gc)("[make_trash] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, p2i(_bottom), p2i(_end));

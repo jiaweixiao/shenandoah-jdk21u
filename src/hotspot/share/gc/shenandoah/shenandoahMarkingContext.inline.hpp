@@ -31,11 +31,21 @@
 #include "logging/log.hpp"
 
 inline bool ShenandoahMarkingContext::mark_strong(oop obj, bool& was_upgraded) {
-  return !allocated_after_mark_start(obj) && _mark_bit_map.mark_strong(cast_from_oop<HeapWord*>(obj), was_upgraded);
+  if (!allocated_after_mark_start(obj) && _mark_bit_map.mark_strong(cast_from_oop<HeapWord*>(obj), was_upgraded)) {
+    if (UseProfileDeadPageInOld)
+      _mark_end_bit_map.par_mark(cast_from_oop<HeapWord*>(obj) + obj->size() - 1);
+    return true;
+  } else
+    return false;
 }
 
 inline bool ShenandoahMarkingContext::mark_weak(oop obj) {
-  return !allocated_after_mark_start(obj) && _mark_bit_map.mark_weak(cast_from_oop<HeapWord *>(obj));
+  if (!allocated_after_mark_start(obj) && _mark_bit_map.mark_weak(cast_from_oop<HeapWord *>(obj))) {
+    if (UseProfileDeadPageInOld)
+      _mark_end_bit_map.par_mark(cast_from_oop<HeapWord*>(obj) + obj->size() - 1);
+    return true;
+  } else
+    return false;
 }
 
 inline bool ShenandoahMarkingContext::is_marked(oop obj) const {
@@ -60,6 +70,10 @@ inline bool ShenandoahMarkingContext::is_marked_strong_or_old(oop obj) const {
 
 inline HeapWord* ShenandoahMarkingContext::get_next_marked_addr(const HeapWord* start, const HeapWord* limit) const {
   return _mark_bit_map.get_next_marked_addr(start, limit);
+}
+
+inline HeapWord* ShenandoahMarkingContext::get_next_marked_end_addr(const HeapWord* const start, HeapWord* const limit) const {
+  return _mark_end_bit_map.get_next_marked_addr(start, limit);
 }
 
 inline bool ShenandoahMarkingContext::allocated_after_mark_start(oop obj) const {

@@ -30,10 +30,21 @@
 
 ShenandoahMarkingContext::ShenandoahMarkingContext(MemRegion heap_region, MemRegion bitmap_region, size_t num_regions) :
   _mark_bit_map(heap_region, bitmap_region),
+  _mark_end_bit_map(),
   _top_bitmaps(NEW_C_HEAP_ARRAY(HeapWord*, num_regions, mtGC)),
   _top_at_mark_starts_base(NEW_C_HEAP_ARRAY(HeapWord*, num_regions, mtGC)),
   _top_at_mark_starts(_top_at_mark_starts_base -
                       ((uintx) heap_region.start() >> ShenandoahHeapRegion::region_size_bytes_shift())) {
+}
+
+ShenandoahMarkingContext::ShenandoahMarkingContext(MemRegion heap_region, MemRegion bitmap_region, MemRegion end_bitmap_region, size_t num_regions) :
+  _mark_bit_map(heap_region, bitmap_region),
+  _mark_end_bit_map(),
+  _top_bitmaps(NEW_C_HEAP_ARRAY(HeapWord*, num_regions, mtGC)),
+  _top_at_mark_starts_base(NEW_C_HEAP_ARRAY(HeapWord*, num_regions, mtGC)),
+  _top_at_mark_starts(_top_at_mark_starts_base -
+                      ((uintx) heap_region.start() >> ShenandoahHeapRegion::region_size_bytes_shift())) {              
+  _mark_end_bit_map.initialize(heap_region, end_bitmap_region);
 }
 
 bool ShenandoahMarkingContext::is_bitmap_clear() const {
@@ -90,6 +101,7 @@ void ShenandoahMarkingContext::clear_bitmap(ShenandoahHeapRegion* r) {
 
   if (top_bitmap > bottom) {
     _mark_bit_map.clear_range_large(MemRegion(bottom, top_bitmap));
+    _mark_end_bit_map.clear_range_large(MemRegion(bottom, top_bitmap));
     _top_bitmaps[r->index()] = bottom;
   }
 

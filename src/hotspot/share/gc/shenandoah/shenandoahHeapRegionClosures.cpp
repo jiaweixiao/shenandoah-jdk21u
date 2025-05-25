@@ -217,9 +217,13 @@ void ShenandoahFreeDeadRangeClosure::account_dead_ranges(ShenandoahHeapRegion* r
       // // DEBUG
       // log_info(gc)("dead range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(dead_obj), p2i(start));
     } else { // Object is marked
-      start += obj->size();
+      HeapWord *start_orig = start;
+      // start += obj->size();
       // Debug profile cost of scan
       // start = _ctx->get_next_marked_addr(start+1, limit);
+      // Scan end bitmap
+      start = _ctx->get_next_marked_end_addr(start_orig, limit) + 1;
+      assert(start_orig + obj->size() < limit && start_orig + obj->size() != start, "fail to scan end bitmap");
     }
   }
   r->add_scan_deadrange_cycle(os::rdtsc() - stt_cycle - tmp_free_cycle);

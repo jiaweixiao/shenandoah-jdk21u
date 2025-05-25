@@ -499,6 +499,15 @@ void CollectedHeap::fill_with_objects(HeapWord* start, size_t words, bool zap)
   DEBUG_ONLY(fill_args_check(start, words);)
   HandleMark hm(Thread::current());  // Free handles before leaving.
 
+  // [gc breakdown][region majflt][swapout garbage]
+  if (UseProfileRegionMajflt && words > 0) {
+    if(os::adc_advise_alloc_range((uintptr_t)start, (uintptr_t)(start + words))) {
+      log_info(gc)("[fill_with_objects] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
+        p2i(start), p2i(start + words));
+      os::abort();
+    }
+  }
+
   // Multiple objects may be required depending on the filler array maximum size. Fill
   // the range up to that with objects that are filler_array_max_size sized. The
   // remainder is filled with a single object.

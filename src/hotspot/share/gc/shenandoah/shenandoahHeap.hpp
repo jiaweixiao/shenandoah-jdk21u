@@ -727,6 +727,7 @@ public:
 private:
   ShenandoahMarkingContext* _marking_context;
   MemRegion  _bitmap_region;
+  MemRegion  _end_bitmap_region;
   MemRegion  _aux_bitmap_region;
   MarkBitMap _verification_bit_map;
   MarkBitMap _aux_bit_map;

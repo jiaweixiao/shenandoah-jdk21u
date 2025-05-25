@@ -295,7 +295,24 @@ jint ShenandoahHeap::initialize() {
                               "Cannot commit bitmap memory");
   }
 
-  _marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap_region, _num_regions);
+  if (!UseProfileDeadPageInOld) {
+    _marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap_region, _num_regions);
+  } else {
+    // We add an end_bitmaps to get obj size without access its header
+    ReservedSpace end_bitmap(_bitmap_size, bitmap_page_size);
+    os::trace_page_sizes_for_requested_size("Mark End Bitmap",
+                                            bitmap_size_orig, end_bitmap.page_size(), bitmap_page_size,
+                                            end_bitmap.base(),
+                                            end_bitmap.size());
+    MemTracker::record_virtual_memory_type(end_bitmap.base(), mtGC);
+    _end_bitmap_region = MemRegion((HeapWord*) end_bitmap.base(), end_bitmap.size() / HeapWordSize);
+    bool _end_bitmap_region_special = end_bitmap.special();
+    if (!_end_bitmap_region_special) {
+      os::commit_memory_or_exit((char *) _end_bitmap_region.start(), bitmap_init_commit, bitmap_page_size, false,
+                                "Cannot commit end_bitmap memory");
+    }
+    _marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap_region, _end_bitmap_region, _num_regions);
+  }
 
   if (ShenandoahVerify) {
     ReservedSpace verify_bitmap(_bitmap_size, bitmap_page_size);
