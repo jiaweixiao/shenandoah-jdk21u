@@ -475,9 +475,14 @@ protected:
   ShenandoahRegionIterator _update_refs_iterator;
 
 private:
-  // GC support
+  // Skipswap support
+  /* the shared memory region with the kernel */
+  size_t _bitmap_shm_size_bytes;
+  volatile bool *_alloc_bitmap_shm;
+  volatile bool *_uninit_bitmap_shm;
   // Free dead range
   void free_dead_range(bool concurrent);
+
   // Evacuation
   virtual void evacuate_collection_set(bool concurrent);
   // Concurrent root processing
@@ -499,6 +504,11 @@ private:
   void rendezvous_threads();
   void recycle_trash();
 public:
+  volatile bool* get_alloc_bitmap_shm() { return _alloc_bitmap_shm; };
+  volatile bool* get_uninit_bitmap_shm() { return _uninit_bitmap_shm; };
+  int set_alloc_range(uintptr_t addr, size_t bytes);
+  int set_free_range(uintptr_t addr, size_t bytes);
+  size_t get_shm_size_bytes() { return _bitmap_shm_size_bytes; };
   void rebuild_free_set(bool concurrent);
   void notify_gc_progress();
   void notify_gc_no_progress();

@@ -1412,21 +1412,46 @@ int os::adc_advise_init_bitmap(uintptr_t base, size_t region_number, size_t regi
   return syscall(453, base, region_number, region_size);
 }
 
-int os::adc_advise_free_bitmap(void) {
+int os::adc_advise_release_bitmap(void) {
   uint mode = 0;
   return syscall(454, mode, 0, 0);
 }
 
-int os::adc_advise_alloc_range(uintptr_t start, uintptr_t end) {
-  uint mode = 1;
-  return syscall(454, mode, start, end);
+void* os::adc_advise_map_shm(const char* file, size_t shm_size) {
+  /* first open the file descriptor */
+  int fd = ::open(file, O_RDWR);
+  if (fd < 0) {
+    log_info(gc, init)("fail to open %s", file);
+    return nullptr;
+  }
+
+  /* then map the shared memory region with the kernel */
+  void* shm = ::mmap(NULL, shm_size,
+        PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (shm == MAP_FAILED) {
+    log_info(gc, init)("fail to mmap alloc-bitmap");
+    ::close(fd);
+    return nullptr;
+  }
+
+  ::close(fd);
+  return shm;
 }
 
-int os::adc_advise_free_range(uintptr_t start, uintptr_t end) {
+void os::adc_advise_unmap_shm(void* shm, size_t shm_size) {
+  ::munmap(shm, shm_size);
+}
+
+int os::adc_advise_alloc_range(uintptr_t start, size_t bytes) {
+  uint mode = 1;
+  return syscall(454, mode, start, start+bytes);
+}
+
+int os::adc_advise_free_range(uintptr_t start, size_t bytes) {
   uint mode = 2;
   // // Debug
-  // memset((void*)start, 0, (size_t)(end - start));
-  return syscall(454, mode, start, end);
+  // memset((void*)start, 0, (size_t)(bytes));
+  return syscall(454, mode, start, start+bytes);
 }
 
 void os::free_page_frames(bool lazy, char *addr, size_t bytes) {

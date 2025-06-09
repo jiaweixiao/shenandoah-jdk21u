@@ -112,6 +112,9 @@
   product(bool, UseProfileRegionMajflt, false,                              \
           "Enable profile region majflt")                                   \
                                                                             \
+  product(bool, UseSkipswapSharedMemory, false,                             \
+          "Enable shared memory between kernel and JVM")                    \
+                                                                            \
   product(bool, UseProfileDeadPageInOld, false,                             \
           "Count # of dead pages in old after CM but before Mixed GC")      \
                                                                             \

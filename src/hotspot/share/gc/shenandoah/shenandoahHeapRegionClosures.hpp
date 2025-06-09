@@ -139,7 +139,7 @@ private:
     //         // Copy::zero_to_bytes((char*)dead_obj, (uintptr_t)start - (uintptr_t)dead_obj);
     //         // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
     //         if (UseProfileRegionMajflt) {
-    //           if(os::adc_advise_free_range(dead_page_start << 12, live_page_start << 12)) {
+    //           if(_heap->set_free_range(dead_page_start << 12, tmp_dead_pages << 12)) {
     //             log_info(gc)("[account_dead_ranges] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, live_page_start << 12);
     //             os::abort();
     //           }
@@ -210,6 +210,7 @@ public:
 // Synchronizes region pinned status, sets update watermark and adjust live data tally for regions
 class ShenandoahFreeDeadRangeClosure : public ShenandoahHeapRegionClosure {
 private:
+  ShenandoahHeap* const _sh;
   ShenandoahMarkingContext* const _ctx;
   ShenandoahDeadRangeCounter* const _res;
 
@@ -219,7 +220,7 @@ private:
   void account_dead_ranges(ShenandoahHeapRegion* r, HeapWord* bottom, HeapWord* limit);
 
 public:
-  explicit ShenandoahFreeDeadRangeClosure(ShenandoahMarkingContext *ctx, ShenandoahDeadRangeCounter *res);
+  explicit ShenandoahFreeDeadRangeClosure(ShenandoahHeap* const heap, ShenandoahMarkingContext* const ctx, ShenandoahDeadRangeCounter *res);
 
   void heap_region_do(ShenandoahHeapRegion* r) override;
   bool is_thread_safe() override { return true; }

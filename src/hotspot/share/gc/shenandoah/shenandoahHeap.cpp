@@ -435,8 +435,27 @@ jint ShenandoahHeap::initialize() {
             p2i(sh_rs.base()), p2i(sh_rs.base() + max_byte_size), 4096);
     if(os::adc_advise_init_bitmap((uintptr_t)sh_rs.base(),
             max_byte_size >> 12, 4096)) {
-      log_info(gc)("[initialize] fails adc_advise_init_bitmap");
+      log_info(gc,init)("[initialize] fails adc_advise_init_bitmap");
       os::abort();
+    }
+
+    if (UseSkipswapSharedMemory) {
+      _bitmap_shm_size_bytes = (max_byte_size >> 12) * sizeof(bool);
+      _alloc_bitmap_shm = (volatile bool*)os::adc_advise_map_shm(
+        "/dev/skipswap_alloc_bitmap", _bitmap_shm_size_bytes);
+      if (_alloc_bitmap_shm == nullptr) {
+        log_info(gc,init)("[initialize] fails mmap alloc_bitmap_shm");
+        os::abort();
+      }
+      log_info(gc, init)("map alloc bitmap at " PTR_FORMAT, p2i(_alloc_bitmap_shm));
+
+      _uninit_bitmap_shm = (volatile bool*)os::adc_advise_map_shm(
+        "/dev/skipswap_uninit_bitmap", _bitmap_shm_size_bytes);
+      if (_uninit_bitmap_shm == nullptr) {
+        log_info(gc,init)("[initialize] fails mmap uninit_bitmap_shm");
+        os::abort();
+      }
+      log_info(gc, init)("map uninit bitmap at " PTR_FORMAT, p2i(_uninit_bitmap_shm));
     }
   }
 
@@ -559,6 +578,9 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _gc_no_progress_count(0),
   _cancel_requested_time(0),
   _update_refs_iterator(this),
+  _bitmap_shm_size_bytes(0),
+  _alloc_bitmap_shm(nullptr),
+  _uninit_bitmap_shm(nullptr),
   _global_generation(nullptr),
   _control_thread(nullptr),
   _uncommit_thread(nullptr),
@@ -2534,6 +2556,47 @@ void ShenandoahHeap::update_heap_region_states(bool concurrent) {
 void ShenandoahHeap::final_update_refs_update_region_states() {
   ShenandoahSynchronizePinnedRegionStates cl;
   parallel_heap_region_iterate(&cl);
+}
+
+int ShenandoahHeap::set_alloc_range(uintptr_t addr, size_t bytes) {
+  if (UseSkipswapSharedMemory) {
+    size_t page_size = 4096;
+    uintptr_t base = (uintptr_t)_heap_region.start();
+    // if (addr < base) {
+    //   log_info(gc)("set_alloc_range: addr < heap base");
+    //   os::abort();
+    // }
+    size_t page_id = (addr - base) >> 12;
+    size_t end = (addr + bytes - base + page_size - 1) >> 12;
+    while (page_id < end) {
+      _alloc_bitmap_shm[page_id] = 1;
+      page_id += 1;
+    }
+    return 0;
+  } else {
+    return os::adc_advise_alloc_range(addr, bytes);
+  }
+}
+
+int ShenandoahHeap::set_free_range(uintptr_t addr, size_t bytes) {
+  if (UseSkipswapSharedMemory) {
+    size_t page_size = 4096;
+    uintptr_t base = (uintptr_t)_heap_region.start();
+    // if (addr < base) {
+    //   log_info(gc)("set_free_range: addr < heap base");
+    //   os::abort();
+    // }
+    size_t page_id = (addr - base + page_size - 1) >> 12;
+    size_t end = (addr + bytes - base) >> 12;
+    while (page_id < end) {
+      _alloc_bitmap_shm[page_id] = 0;
+      _uninit_bitmap_shm[page_id] = 1;
+      page_id += 1;
+    }
+    return 0;
+  } else {
+    return os::adc_advise_free_range(addr, bytes);
+  }
 }
 
 void ShenandoahHeap::rebuild_free_set(bool concurrent) {

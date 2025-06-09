@@ -286,9 +286,11 @@ class os: AllStatic {
   // [gc breakdown][region majflt]
   // Kernel adc advise, bitmap for pages.
   static int adc_advise_init_bitmap(uintptr_t base, size_t region_number, size_t region_size);
-  static int adc_advise_free_bitmap(void);
-  static int adc_advise_alloc_range(uintptr_t start, uintptr_t end);
-  static int adc_advise_free_range(uintptr_t start, uintptr_t end);
+  static void* adc_advise_map_shm(const char* file, size_t shm_size);
+  static void adc_advise_unmap_shm(void* shm, size_t shm_size);
+  static int adc_advise_release_bitmap(void);
+  static int adc_advise_alloc_range(uintptr_t start, size_t bytes);
+  static int adc_advise_free_range(uintptr_t start, size_t bytes);
   static void free_page_frames(bool lazy, char *addr, size_t bytes);
 
   // Return current local time in a string (YYYY-MM-DD HH:MM:SS).

@@ -158,7 +158,8 @@ void ShenandoahDeadRangeCounter::dump_dead_ranges() const {
   }
 }
 
-ShenandoahFreeDeadRangeClosure::ShenandoahFreeDeadRangeClosure(ShenandoahMarkingContext *ctx, ShenandoahDeadRangeCounter *res) :
+ShenandoahFreeDeadRangeClosure::ShenandoahFreeDeadRangeClosure(ShenandoahHeap *heap, ShenandoahMarkingContext *ctx, ShenandoahDeadRangeCounter *res) :
+  _sh(heap),
   _ctx(ctx),
   _res(res) {}
 
@@ -200,7 +201,7 @@ void ShenandoahFreeDeadRangeClosure::account_dead_ranges(ShenandoahHeapRegion* r
           // Copy::zero_to_bytes((char*)dead_obj, (uintptr_t)start - (uintptr_t)dead_obj);
           // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
           if (UseProfileRegionMajflt) {
-            if(os::adc_advise_free_range(dead_page_start << 12, live_page_start << 12)) {
+            if(_sh->set_free_range(dead_page_start << 12, tmp_dead_pages << 12)) {
               log_info(gc)("[account_dead_ranges] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, live_page_start << 12);
               os::abort();
             }
@@ -241,7 +242,7 @@ void ShenandoahFreeDeadRangeClosure::heap_region_do(ShenandoahHeapRegion* r) {
 void ShenandoahFreeDeadRangeTask::do_work(uint worker_id) {
   ShenandoahHeapRegion *r;
   ShenandoahGeneration *active_gen = _sh->active_generation();
-  ShenandoahFreeDeadRangeClosure cl(ShenandoahHeap::heap()->marking_context(), _res);
+  ShenandoahFreeDeadRangeClosure cl(_sh, _sh->marking_context(), _res);
   ShenandoahAffiliation active_type = FREE;
   bool is_global = false;
 

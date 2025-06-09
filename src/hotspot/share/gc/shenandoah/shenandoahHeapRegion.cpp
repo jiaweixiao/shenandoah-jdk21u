@@ -329,15 +329,14 @@ void ShenandoahHeapRegion::make_trash() {
         size_t stt = os::rdtsc();
         // Copy::zero_to_bytes((char*)_bottom, ShenandoahHeapRegion::RegionSizeBytes);
         if (UseProfileRegionMajflt) {
-          if(os::adc_advise_free_range((uintptr_t)_bottom, (uintptr_t)_end)) {
+          if(ShenandoahHeap::heap()->set_free_range((uintptr_t)_bottom,
+                  ShenandoahHeapRegion::RegionSizeBytes)) {
             log_info(gc)("[make_trash] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, p2i(_bottom), p2i(_end));
             os::abort();
           }
           // // DEBUG
           // log_info(gc)("[make_trash] region %lu %d", _index, _state);
-        }
-
-        if (UseMadvFree)
+        } else if (UseMadvFree)
           os::free_page_frames(true, (char*)_bottom,
                   ShenandoahHeapRegion::RegionSizeBytes);
         else if (UseMadvFreePage > 0) {

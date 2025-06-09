@@ -944,7 +944,16 @@ void Threads::destroy_vm() {
 
   // [gc breakdown][region majflt]
   if (UseProfileRegionMajflt) {
-    os::adc_advise_free_bitmap();
+    os::adc_advise_release_bitmap();
+    log_info(gc,heap,exit)("release bitmap shared memory in kernel");
+    if (UseSkipswapSharedMemory) {
+      ShenandoahHeap* heap = ShenandoahHeap::heap();
+      os::adc_advise_unmap_shm((void*)(heap->get_alloc_bitmap_shm()),
+        heap->get_shm_size_bytes());
+      os::adc_advise_unmap_shm((void*)(heap->get_uninit_bitmap_shm()),
+        heap->get_shm_size_bytes());
+      log_info(gc,heap,exit)("unmap bitmap shared memory");
+    }
   }
 
   // exit_globals() will delete tty

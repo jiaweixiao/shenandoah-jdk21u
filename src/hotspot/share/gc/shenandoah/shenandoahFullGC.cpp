@@ -906,8 +906,7 @@ public:
         //   p2i(compact_to) >> 12, p2i(compact_to + size) >> 12);
 
         // conjoint copy, can not init to zero
-        if(os::adc_advise_alloc_range((uintptr_t)compact_to,
-          (uintptr_t)(compact_to + size))) {
+        if(_heap->set_alloc_range((uintptr_t)compact_to, size*BytesPerWord)) {
           log_info(gc)("[ShenandoahCompactObjectsClosure] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
             p2i(compact_to), p2i(compact_to + size));
           os::abort();
@@ -1013,7 +1012,7 @@ public:
       // Copy::zero_to_bytes((char*)r->top(), (uintptr_t)r->end() - (uintptr_t)r->top());
       // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
       if (UseProfileRegionMajflt) {
-        if(os::adc_advise_free_range(dead_page_start << 12, live_page_start << 12)) {
+        if(_heap->set_free_range(dead_page_start << 12, tmp_dead_pages << 12)) {
           log_info(gc)("[PostCompact] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, live_page_start << 12);
           os::abort();
         }
@@ -1102,8 +1101,8 @@ void ShenandoahFullGC::compact_humongous_objects() {
         //   p2i(heap->get_region(new_start)->bottom() + words_size) >> 12);
 
         // conjoint copy, can not init to zero
-        if(os::adc_advise_alloc_range((uintptr_t)heap->get_region(new_start)->bottom(),
-          (uintptr_t)(heap->get_region(new_start)->bottom() + words_size))) {
+        if(heap->set_alloc_range((uintptr_t)(heap->get_region(new_start)->bottom()),
+          words_size*BytesPerWord)) {
           log_info(gc)("[compact_humongous_objects] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
             p2i(heap->get_region(new_start)->bottom()),
             p2i(heap->get_region(new_start)->bottom() + words_size));

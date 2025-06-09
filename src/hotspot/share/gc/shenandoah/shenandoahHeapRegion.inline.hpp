@@ -84,7 +84,7 @@ HeapWord* ShenandoahHeapRegion::allocate_aligned(size_t size, ShenandoahAllocReq
     if (UseProfileRegionMajflt) {
       // // DEBUG
       // Copy::zero_to_words(obj, size);
-      if(os::adc_advise_alloc_range((uintptr_t)orig_top, (uintptr_t)new_top)) {
+      if(ShenandoahHeap::heap()->set_alloc_range((uintptr_t)orig_top, (uintptr_t)new_top-(uintptr_t)orig_top)) {
         log_info(gc)("[allocate_aligned] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(orig_top), p2i(new_top));
         os::abort();
       }
@@ -115,7 +115,7 @@ HeapWord* ShenandoahHeapRegion::allocate(size_t size, const ShenandoahAllocReque
     if (UseProfileRegionMajflt) {
       // // DEBUG
       // Copy::zero_to_words(obj, size);
-      if(os::adc_advise_alloc_range((uintptr_t)obj, (uintptr_t)new_top)) {
+      if(ShenandoahHeap::heap()->set_alloc_range((uintptr_t)obj, size*BytesPerWord)) {
         log_info(gc)("[allocate] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(obj), p2i(new_top));
         os::abort();
       }

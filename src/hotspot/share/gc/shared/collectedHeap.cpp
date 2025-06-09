@@ -471,7 +471,7 @@ CollectedHeap::fill_with_object_impl(HeapWord* start, size_t words, bool zap)
 
   // [gc breakdown][region majflt][swapout garbage]
   if (UseProfileRegionMajflt && words > 0) {
-    if(os::adc_advise_alloc_range((uintptr_t)start, (uintptr_t)(start + words))) {
+    if(ShenandoahHeap::heap()->set_alloc_range((uintptr_t)start, words*BytesPerWord)) {
       log_info(gc)("[fill_with_object_impl] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
         p2i(start), p2i(start + words));
       os::abort();
@@ -501,7 +501,7 @@ void CollectedHeap::fill_with_objects(HeapWord* start, size_t words, bool zap)
 
   // [gc breakdown][region majflt][swapout garbage]
   if (UseProfileRegionMajflt && words > 0) {
-    if(os::adc_advise_alloc_range((uintptr_t)start, (uintptr_t)(start + words))) {
+    if(ShenandoahHeap::heap()->set_alloc_range((uintptr_t)start, words*BytesPerWord)) {
       log_info(gc)("[fill_with_objects] fails adc_advise_alloc_range [" PTR_FORMAT ", " PTR_FORMAT "]",
         p2i(start), p2i(start + words));
       os::abort();
