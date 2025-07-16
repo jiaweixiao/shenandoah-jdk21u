@@ -952,6 +952,8 @@ void Threads::destroy_vm() {
         heap->get_shm_size_bytes());
       os::adc_advise_unmap_shm((void*)(heap->get_uninit_bitmap_shm()),
         heap->get_shm_size_bytes());
+      os::adc_advise_unmap_shm((void*)(heap->get_remote_bitmap_shm()),
+        heap->get_shm_size_bytes());
       log_info(gc,heap,exit)("unmap bitmap shared memory");
     }
   }

@@ -480,6 +480,7 @@ private:
   size_t _bitmap_shm_size_bytes;
   volatile bool *_alloc_bitmap_shm;
   volatile bool *_uninit_bitmap_shm;
+  volatile bool *_remote_bitmap_shm;
   // Free dead range
   void free_dead_range(bool concurrent);
 
@@ -506,6 +507,7 @@ private:
 public:
   volatile bool* get_alloc_bitmap_shm() { return _alloc_bitmap_shm; };
   volatile bool* get_uninit_bitmap_shm() { return _uninit_bitmap_shm; };
+  volatile bool* get_remote_bitmap_shm() { return _remote_bitmap_shm; };
   int set_alloc_range(uintptr_t addr, size_t bytes);
   int set_free_range(uintptr_t addr, size_t bytes);
   size_t get_shm_size_bytes() { return _bitmap_shm_size_bytes; };

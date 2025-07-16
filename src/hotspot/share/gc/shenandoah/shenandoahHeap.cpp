@@ -456,6 +456,14 @@ jint ShenandoahHeap::initialize() {
         os::abort();
       }
       log_info(gc, init)("map uninit bitmap at " PTR_FORMAT, p2i(_uninit_bitmap_shm));
+
+      _remote_bitmap_shm = (volatile bool*)os::adc_advise_map_shm(
+        "/dev/skipswap_remote_bitmap", _bitmap_shm_size_bytes);
+      if (_remote_bitmap_shm == nullptr) {
+        log_info(gc,init)("[initialize] fails mmap remote_bitmap_shm");
+        os::abort();
+      }
+      log_info(gc, init)("map remote bitmap at " PTR_FORMAT, p2i(_remote_bitmap_shm));
     }
   }
 
@@ -581,6 +589,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _bitmap_shm_size_bytes(0),
   _alloc_bitmap_shm(nullptr),
   _uninit_bitmap_shm(nullptr),
+  _remote_bitmap_shm(nullptr),
   _global_generation(nullptr),
   _control_thread(nullptr),
   _uncommit_thread(nullptr),
@@ -2590,7 +2599,10 @@ int ShenandoahHeap::set_free_range(uintptr_t addr, size_t bytes) {
     size_t end = (addr + bytes - base) >> 12;
     while (page_id < end) {
       _alloc_bitmap_shm[page_id] = 0;
-      _uninit_bitmap_shm[page_id] = 1;
+      // We only make a remote page uninit
+      if (_remote_bitmap_shm[page_id]) {
+        _uninit_bitmap_shm[page_id] = 1;
+      }
       page_id += 1;
     }
     return 0;
