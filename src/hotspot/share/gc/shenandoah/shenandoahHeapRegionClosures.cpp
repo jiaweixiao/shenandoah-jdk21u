@@ -174,9 +174,11 @@ void ShenandoahFreeDeadRangeClosure::account_dead_ranges(ShenandoahHeapRegion* r
   HeapWord* dead_obj;
   uintptr_t dead_page_start, live_page_start;
   oop obj;
-  int tmp_dead_pages;
+  int tmp_dead_pages = 0;
+  int sum_dead_pages = 0;
   int dead_ranges_len = (int)_res->dead_ranges_len();
-  size_t tmp_stt, tmp_free_cycle = 0;
+  size_t tmp_stt = 0;
+  size_t tmp_free_cycle = 0;
   size_t stt_cycle = os::rdtsc();
 
   // Scan objects
@@ -213,6 +215,7 @@ void ShenandoahFreeDeadRangeClosure::account_dead_ranges(ShenandoahHeapRegion* r
               (char*)(dead_page_start << 12), tmp_dead_pages << 12);
           }
           tmp_free_cycle += os::rdtsc() - tmp_stt;
+          sum_dead_pages += tmp_dead_pages;
         }
       }
       // // DEBUG
@@ -228,6 +231,7 @@ void ShenandoahFreeDeadRangeClosure::account_dead_ranges(ShenandoahHeapRegion* r
   r->add_scan_deadrange_cycle(os::rdtsc() - stt_cycle - tmp_free_cycle);
   r->add_free_deadrange_cycle(tmp_free_cycle);
   r->add_deadrange_count(1);
+  r->add_deadpage_count(sum_dead_pages);
 }
 
 void ShenandoahFreeDeadRangeClosure::heap_region_do(ShenandoahHeapRegion* r) {

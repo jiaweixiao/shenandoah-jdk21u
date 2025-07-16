@@ -84,6 +84,7 @@ ShenandoahHeapRegion::ShenandoahHeapRegion(HeapWord* start, size_t index, bool c
 #endif // SHENANDOAH_CENSUS_NOISE
   _needs_bitmap_reset(false),
   _trashed_count(0),
+  _deadpage_count(0),
   _deadrange_count(0),
   _free_emptyregion_cycle(0),
   _scan_deadrange_cycle(0),
@@ -353,6 +354,7 @@ void ShenandoahHeapRegion::make_trash() {
         _free_emptyregion_cycle += os::rdtsc() - stt;
       }
       _trashed_count += 1;
+      _deadpage_count += ShenandoahHeapRegion::RegionSizeBytes / 4096;
 
       set_state(_trash);
       return;

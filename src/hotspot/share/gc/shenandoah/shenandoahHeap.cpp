@@ -2237,17 +2237,19 @@ void ShenandoahHeap::stop() {
   }
 
   // Dump region trashed count
-  size_t count = 0, dead_count = 0;
+  size_t count = 0, deadrange_count = 0, deadpage_count = 0;
   size_t free_empty_cycle = 0, scan_dead_cycle = 0, free_dead_cycle = 0;
   for (size_t i = 0; i < num_regions(); i++) {
     count += get_region(i)->trashed_count();
     free_empty_cycle += get_region(i)->free_emptyregion_cycle();
-    dead_count += get_region(i)->deadrange_count();
+    deadrange_count += get_region(i)->deadrange_count();
     scan_dead_cycle += get_region(i)->scan_deadrange_cycle();
     free_dead_cycle += get_region(i)->free_deadrange_cycle();
+    deadpage_count += get_region(i)->deadpage_count();
   }
   log_info(gc)("Cost of Empty Region: avg %.2fus, count %lu", free_empty_cycle/2.4/1000/count, count);
-  log_info(gc)("Cost of Dead Range: avg scan %.2fus, avg free %.2fus, count %lu", scan_dead_cycle/2.4/1000/dead_count, free_dead_cycle/2.4/1000/dead_count, dead_count);
+  log_info(gc)("Cost of Dead Range: avg scan %.2fus, avg free %.2fus, count %lu", scan_dead_cycle/2.4/1000/deadrange_count, free_dead_cycle/2.4/1000/deadrange_count, deadrange_count);
+  log_info(gc)("Sum of dead pages: %lu", deadpage_count);
 }
 
 void ShenandoahHeap::stw_unload_classes(bool full_gc) {

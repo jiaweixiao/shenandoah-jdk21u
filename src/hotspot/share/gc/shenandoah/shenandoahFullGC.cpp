@@ -1025,6 +1025,7 @@ public:
       }
       r->add_free_deadrange_cycle(os::rdtsc() - stt);
       r->add_deadrange_count(1);
+      r->add_deadpage_count(tmp_dead_pages);
     }
 
     // Recycle all trash regions
