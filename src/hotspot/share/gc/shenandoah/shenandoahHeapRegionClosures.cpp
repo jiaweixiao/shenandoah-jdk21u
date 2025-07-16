@@ -117,7 +117,7 @@ void ShenandoahFinalMarkUpdateRegionStateClosure::heap_region_do(ShenandoahHeapR
   }
 }
 
-ShenandoahDeadRangeCounter::ShenandoahDeadRangeCounter(ShenandoahMarkingContext *ctx, uint nworkers) : 
+ShenandoahDeadRangeCounter::ShenandoahDeadRangeCounter(ShenandoahMarkingContext *ctx, uint nworkers) :
   _ctx(ctx),
   _num_workers(nworkers) {
   if (ctx != nullptr) {
@@ -219,12 +219,10 @@ void ShenandoahFreeDeadRangeClosure::account_dead_ranges(ShenandoahHeapRegion* r
       // log_info(gc)("dead range [" PTR_FORMAT ", " PTR_FORMAT "]", p2i(dead_obj), p2i(start));
     } else { // Object is marked
       HeapWord *start_orig = start;
-      // start += obj->size();
-      // Debug profile cost of scan
-      // start = _ctx->get_next_marked_addr(start+1, limit);
       // Scan end bitmap
-      start = _ctx->get_next_marked_end_addr(start_orig, limit) + 1;
-      assert(start_orig + obj->size() < limit && start_orig + obj->size() != start, "fail to scan end bitmap");
+      HeapWord *obj_end = _ctx->get_next_marked_end_addr(start_orig, limit);
+      start = obj_end + 1;
+      assert((start_orig + obj->size() >= limit) || (start_orig + obj->size() < limit && start_orig + obj->size() == start), "fail to scan end bitmap start_orig+objsize %p, start %p, limit %p, objsize %lu", (void*)(start_orig+obj->size()), (void*)start, (void*)limit, obj->size());
     }
   }
   r->add_scan_deadrange_cycle(os::rdtsc() - stt_cycle - tmp_free_cycle);

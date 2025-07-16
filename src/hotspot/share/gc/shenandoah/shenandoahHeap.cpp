@@ -425,10 +425,10 @@ jint ShenandoahHeap::initialize() {
     _free_set->finish_rebuild(young_cset_regions, old_cset_regions, num_old);
   }
 
-  // 
+  //
   // [gc breakdown][region majflt]
   // Init page status bitmap in kernel
-  // 
+  //
   if (UseProfileRegionMajflt) {
     // adc advise region size is equal to 4KB page.
     log_info(gc,init)("Init bitmap [" PTR_FORMAT ", " PTR_FORMAT "], grain %dB",

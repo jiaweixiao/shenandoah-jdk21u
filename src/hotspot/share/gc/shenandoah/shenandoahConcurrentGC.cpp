@@ -283,7 +283,7 @@ void ShenandoahConcurrentGC::vmop_entry_final_mark() {
 void ShenandoahConcurrentGC::vmop_entry_free_dead_range() {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
-  ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::free_dead_range);
+  ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::free_dead_range_gross);
 
   heap->try_inject_alloc_failure();
   VM_ShenandoahFreeDeadRange op(this);

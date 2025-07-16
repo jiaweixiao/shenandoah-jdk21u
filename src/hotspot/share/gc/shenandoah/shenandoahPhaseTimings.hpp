@@ -71,6 +71,7 @@ class outputStream;
                                                                                        \
   f(conc_free_dead_range,                           "Concurrent Free Dead Range")      \
                                                                                        \
+  f(free_dead_range_gross,                          "Free Dead Range (G)")             \
   f(free_dead_range,                                "Free Dead Range")                 \
                                                                                        \
   f(final_mark_gross,                               "Pause Final Mark (G)")            \
