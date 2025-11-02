@@ -194,8 +194,10 @@ void ShenandoahDegenGC::op_degenerated() {
       assert(!heap->cancelled_gc(), "STW mark can not OOM");
 
       if (UseProfileDeadPageInOld) {
+        static const char* msg = "Post mark free dead range";
+        ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::free_dead_range);
         ShenandoahGCPhase free_phase(ShenandoahPhaseTimings::free_dead_range);
-        ShenandoahHeap::heap()->free_dead_range(false);
+        ShenandoahHeap::heap()->post_mark_free_dead_range(false);
       }
 
       /* Degen select Collection Set. etc. */

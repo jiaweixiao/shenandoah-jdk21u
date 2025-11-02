@@ -268,6 +268,7 @@ private:
 
   bool _needs_bitmap_reset;
 
+  // [madv free] profile madv cost
   size_t _trashed_count;
   size_t _deadpage_count;
   size_t _deadrange_count;

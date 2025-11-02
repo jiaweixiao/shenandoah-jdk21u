@@ -245,7 +245,7 @@ void ShenandoahFullGC::do_it(GCCause::Cause gc_cause) {
     ShenandoahHeapLocker lock(heap->lock());
 
     if (UseProfileDeadPageInOld)
-      phase1_free_dead_range();
+      phase1_post_mark_free_dead_range();
 
     phase2_calculate_target_addresses(worker_slices);
 
@@ -309,11 +309,11 @@ void ShenandoahFullGC::phase1_mark_heap() {
   }
 }
 
-void ShenandoahFullGC::phase1_free_dead_range() {
-  GCTraceTime(Info, gc, phases) time("Phase 1: Free Dead Range", _gc_timer);
+void ShenandoahFullGC::phase1_post_mark_free_dead_range() {
+  GCTraceTime(Info, gc, phases) time("Phase 1: Post mark free Dead Range", _gc_timer);
   ShenandoahGCPhase free_phase(ShenandoahPhaseTimings::free_dead_range);
 
-  ShenandoahHeap::heap()->free_dead_range(false);
+  ShenandoahHeap::heap()->post_mark_free_dead_range(false);
 }
 
 class ShenandoahPrepareForCompactionObjectClosure : public ObjectClosure {
@@ -576,6 +576,8 @@ public:
       assert(r->humongous_start_region()->has_live(), "Region " SIZE_FORMAT " should have live", r->index());
     } else if (r->is_regular()) {
       if (!r->has_live()) {
+        // [madv free] [profile marking income]
+        // Has been processed after final mark.
         r->make_trash_immediate();
       }
     }
@@ -1001,32 +1003,33 @@ public:
       r->make_trash();
     }
 
-    // Free Dead Range
-    if (UseProfileDeadPageInOld && UseFreeDeadPage && live > 0 && r->free() >= 4096) {
-      (r->top(), r->end());
-      uintptr_t dead_page_start = (((uintptr_t)r->top()) + 4096 -1) >> 12;
-      uintptr_t live_page_start = ((uintptr_t)r->end()) >> 12;
-      int tmp_dead_pages = live_page_start - dead_page_start;
-      size_t stt = os::rdtsc();
-      // DEBUG
-      // Copy::zero_to_bytes((char*)r->top(), (uintptr_t)r->end() - (uintptr_t)r->top());
-      // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
-      if (UseProfileRegionMajflt) {
-        if(_heap->set_free_range(dead_page_start << 12, tmp_dead_pages << 12)) {
-          log_info(gc)("[PostCompact] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, live_page_start << 12);
-          os::abort();
-        }
-      } else if (UseMadvFree) {
-        os::free_page_frames(true,
-          (char*)(dead_page_start << 12), tmp_dead_pages << 12);
-      } else if (UseMadvDontneed) {
-        os::free_page_frames(false,
-          (char*)(dead_page_start << 12), tmp_dead_pages << 12);
-      }
-      r->add_free_deadrange_cycle(os::rdtsc() - stt);
-      r->add_deadrange_count(1);
-      r->add_deadpage_count(tmp_dead_pages);
-    }
+    // // Free Dead Range
+    // if (UseProfileDeadPageInOld && UseFreeDeadPage && live > 0 && r->free() >= 4096) {
+    //   (r->top(), r->end());
+    //   uintptr_t dead_page_start = (((uintptr_t)r->top()) + 4096 -1) >> 12;
+    //   uintptr_t live_page_start = ((uintptr_t)r->end()) >> 12;
+    //   int tmp_dead_pages = live_page_start - dead_page_start;
+    //   size_t stt = os::rdtsc();
+    //   // DEBUG
+    //   // Copy::zero_to_bytes((char*)r->top(), (uintptr_t)r->end() - (uintptr_t)r->top());
+    //   // Copy::zero_to_bytes((char*)(dead_page_start << 12), tmp_dead_pages << 12);
+
+    //   if (UseMadvFree) {
+    //     os::free_page_frames(true,
+    //       (char*)(dead_page_start << 12), tmp_dead_pages << 12);
+    //   } else if (UseMadvDontneed) {
+    //     os::free_page_frames(false,
+    //       (char*)(dead_page_start << 12), tmp_dead_pages << 12);
+    //   } else if (UseProfileRegionMajflt) {
+    //     if(_heap->set_free_range(dead_page_start << 12, tmp_dead_pages << 12)) {
+    //       log_info(gc)("[PostCompact] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, live_page_start << 12);
+    //       os::abort();
+    //     }
+    //   }
+    //   r->add_free_deadrange_cycle(os::rdtsc() - stt);
+    //   r->add_deadrange_count(1);
+    //   r->add_deadpage_count(tmp_dead_pages);
+    // }
 
     // Recycle all trash regions
     if (r->is_trash()) {
@@ -1208,6 +1211,20 @@ void ShenandoahFullGC::phase5_epilog() {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_reset_complete);
     ShenandoahMCResetCompleteBitmapTask task;
     heap->workers()->run_task(&task);
+  }
+
+  // [madv free] [profile marking income]
+  // Process consecutive dead pages in all regions
+  // Run with single thread
+  if (UseProfileDeadPageInOld) {
+    {
+      GCTraceTime(Info, gc, phases) time("Phase 5: Post compact free dead range", _gc_timer);
+      ShenandoahGCPhase free_phase(ShenandoahPhaseTimings::free_dead_range);
+      ShenandoahDeadRangeCounter res(heap, heap->marking_context(), 1);
+      ShenandoahPostCompactFreeDeadRangeClosure cl(heap->marking_context(), &res);
+      cl.set_worker(0);
+      heap->heap_region_iterate(&cl);
+    }
   }
 
   // Bring regions in proper states after the collection, and set heap properties.

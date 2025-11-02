@@ -48,8 +48,24 @@ inline bool ShenandoahMarkingContext::mark_weak(oop obj) {
     return false;
 }
 
+inline bool ShenandoahMarkingContext::mark_page(oop obj) {
+  return _page_mark_bit_map.par_mark(cast_from_oop<HeapWord *>(obj));
+}
+
+inline bool ShenandoahMarkingContext::mark_page(HeapWord* addr) {
+  return _page_mark_bit_map.par_mark(addr);
+}
+
+inline void ShenandoahMarkingContext::clear_page(HeapWord* addr) {
+  return _page_mark_bit_map.clear(addr);
+}
+
 inline bool ShenandoahMarkingContext::is_marked(oop obj) const {
   return allocated_after_mark_start(obj) || _mark_bit_map.is_marked(cast_from_oop<HeapWord *>(obj));
+}
+
+inline bool ShenandoahMarkingContext::is_marked_page(HeapWord* addr) const {
+  return _page_mark_bit_map.is_marked(addr);
 }
 
 inline bool ShenandoahMarkingContext::is_marked_strong(oop obj) const {

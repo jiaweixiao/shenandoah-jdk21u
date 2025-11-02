@@ -88,11 +88,11 @@ public:
   virtual  void doit();
 };
 
-class VM_ShenandoahFreeDeadRange: public VM_ShenandoahOperation {
+class VM_ShenandoahPostMarkFreeDeadRange: public VM_ShenandoahOperation {
 private:
   ShenandoahConcurrentGC* const _gc;
 public:
-  VM_ShenandoahFreeDeadRange(ShenandoahConcurrentGC* gc) :
+  VM_ShenandoahPostMarkFreeDeadRange(ShenandoahConcurrentGC* gc) :
     VM_ShenandoahOperation(),
     _gc(gc) {};
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahFreeDeadRange; }

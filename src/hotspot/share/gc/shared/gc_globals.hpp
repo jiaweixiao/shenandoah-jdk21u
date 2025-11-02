@@ -115,6 +115,10 @@
   product(bool, UseSkipswapSharedMemory, false,                             \
           "Enable shared memory between kernel and JVM")                    \
                                                                             \
+  product(bool, UseProfileTraceIncome, false,                               \
+          "Profile the income of Young/Old GC tracing of dead pages in"     \
+          "regions with live objects")                                      \
+                                                                            \
   product(bool, UseProfileDeadPageInOld, false,                             \
           "Count # of dead pages in old after CM but before Mixed GC")      \
                                                                             \

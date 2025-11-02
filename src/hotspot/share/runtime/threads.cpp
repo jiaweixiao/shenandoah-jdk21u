@@ -943,7 +943,7 @@ void Threads::destroy_vm() {
   notify_vm_shutdown();
 
   // [gc breakdown][region majflt]
-  if (UseProfileRegionMajflt) {
+  if (UseProfileRegionMajflt && !UseMadvFree && !UseMadvFreePage && !UseMadvDontneed) {
     os::adc_advise_release_bitmap();
     log_info(gc,heap,exit)("release bitmap shared memory in kernel");
     if (UseSkipswapSharedMemory) {

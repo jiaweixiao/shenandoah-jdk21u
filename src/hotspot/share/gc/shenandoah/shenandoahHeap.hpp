@@ -482,7 +482,7 @@ private:
   volatile bool *_uninit_bitmap_shm;
   volatile bool *_remote_bitmap_shm;
   // Free dead range
-  void free_dead_range(bool concurrent);
+  void post_mark_free_dead_range(bool concurrent);
 
   // Evacuation
   virtual void evacuate_collection_set(bool concurrent);
@@ -740,6 +740,7 @@ private:
   ShenandoahMarkingContext* _marking_context;
   MemRegion  _bitmap_region;
   MemRegion  _end_bitmap_region;
+  MemRegion  _page_bitmap_region;
   MemRegion  _aux_bitmap_region;
   MarkBitMap _verification_bit_map;
   MarkBitMap _aux_bit_map;

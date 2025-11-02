@@ -186,59 +186,101 @@ public:
 
 class ShenandoahDeadRangeCounter : public StackObj {
 private:
-  ShenandoahMarkingContext *_ctx;
+  ShenandoahHeap* const _heap;
+  ShenandoahMarkingContext* const _ctx;
 
   // Per worker bins: 2^0, ..., 2^log2i(4KB pages per region)
   uint** _dead_ranges_log2_worker;
+  // How many 4KB pages per region
   uint _dead_ranges_len;
   uint _num_workers;
+  // Per worker sum of dead pages
+  uint* _dead_pages_worker;
 
   // No implicit copying: iterators should be passed by reference to capture the state
   NONCOPYABLE(ShenandoahDeadRangeCounter);
 
-public:
-  ShenandoahDeadRangeCounter(ShenandoahMarkingContext *ctx, uint nworkers);
-  ~ShenandoahDeadRangeCounter();
-
-  void add_counter(uint worker, uint index, uint i);
-  uint nworkers() { return _num_workers; };
-  uint dead_ranges_len() { return _dead_ranges_len; };
+  void inc_counter(uint worker, uint dead_pages);
+  // uint nworkers() { return _num_workers; };
+  // uint dead_ranges_len() { return _dead_ranges_len; };
   // Reset iterator to default state
   void dump_dead_ranges() const;
+
+public:
+  ShenandoahDeadRangeCounter(ShenandoahHeap* const heap, ShenandoahMarkingContext* const ctx, uint nworkers);
+  ~ShenandoahDeadRangeCounter();
+
+  size_t account_dead_range(uint worker_id, ShenandoahHeapRegion* r, uintptr_t dead_page_start, size_t dead_pages);
+  void account_dead_ranges_regular(uint worker_id, ShenandoahHeapRegion* r, HeapWord* bottom, HeapWord* limit);
+  void account_dead_ranges_humongous_start(uint worker_id, ShenandoahHeapRegion* r);
 };
 
-// Synchronizes region pinned status, sets update watermark and adjust live data tally for regions
-class ShenandoahFreeDeadRangeClosure : public ShenandoahHeapRegionClosure {
+// [madv free]
+// After marking, we then find dead pages by scan marked objects.
+// Here each worker claims one of the affiliated regions.
+class ShenandoahPostMarkFreeDeadRangeClosure : public ShenandoahHeapRegionClosure {
 private:
-  ShenandoahHeap* const _sh;
   ShenandoahMarkingContext* const _ctx;
   ShenandoahDeadRangeCounter* const _res;
 
-  // [madv free]
-  // Find dead page in region by scan marked objects.
-  // Here each worker claims one of the old generation regions.
-  void account_dead_ranges(ShenandoahHeapRegion* r, HeapWord* bottom, HeapWord* limit);
+  // size_t account_dead_range(ShenandoahHeapRegion* r, uintptr_t dead_page_start, size_t dead_pages);
+  // void account_dead_ranges_regular(ShenandoahHeapRegion* r, HeapWord* bottom, HeapWord* limit);
+  // void account_dead_ranges_humongous_start(ShenandoahHeapRegion* r);
 
 public:
-  explicit ShenandoahFreeDeadRangeClosure(ShenandoahHeap* const heap, ShenandoahMarkingContext* const ctx, ShenandoahDeadRangeCounter *res);
+  explicit ShenandoahPostMarkFreeDeadRangeClosure(ShenandoahMarkingContext* const ctx, ShenandoahDeadRangeCounter *res) :
+    _ctx(ctx), _res(res) {}
 
   void heap_region_do(ShenandoahHeapRegion* r) override;
   bool is_thread_safe() override { return true; }
 };
 
-class ShenandoahFreeDeadRangeTask : public WorkerTask {
+// [madv free]
+// After evacuation and updating references, we will trash regions in collection set.
+// We will then find dead pages by scan marked objects.
+// Here each worker claims one of the affiliated regions.
+class ShenandoahTrashCSetFreeDeadRangeClosure : public ShenandoahHeapRegionClosure {
 private:
-  ShenandoahHeap* const _sh;
+  ShenandoahMarkingContext* const _ctx;
+  ShenandoahDeadRangeCounter* const _res;
+
+public:
+  explicit ShenandoahTrashCSetFreeDeadRangeClosure(ShenandoahMarkingContext* const ctx, ShenandoahDeadRangeCounter *res) :
+    _ctx(ctx), _res(res) {}
+
+  void heap_region_do(ShenandoahHeapRegion* r) override;
+  bool is_thread_safe() override { return true; }
+};
+
+// [madv free]
+// After compaction in Full GC, we will then find dead pages by scan marked objects.
+// Here each worker claims one of the affiliated regions.
+class ShenandoahPostCompactFreeDeadRangeClosure : public ShenandoahHeapRegionClosure {
+private:
+  ShenandoahMarkingContext* const _ctx;
+  ShenandoahDeadRangeCounter* const _res;
+
+public:
+  explicit ShenandoahPostCompactFreeDeadRangeClosure(ShenandoahMarkingContext* const ctx, ShenandoahDeadRangeCounter *res) :
+    _ctx(ctx), _res(res) {}
+
+  void heap_region_do(ShenandoahHeapRegion* r) override;
+  bool is_thread_safe() override { return true; }
+};
+
+class ShenandoahPostMarkFreeDeadRangeTask : public WorkerTask {
+private:
+  ShenandoahHeap* const _heap;
   ShenandoahRegionIterator* const _regions;
   ShenandoahDeadRangeCounter* const _res;
   bool _concurrent;
 public:
-  ShenandoahFreeDeadRangeTask(ShenandoahHeap* sh,
+  ShenandoahPostMarkFreeDeadRangeTask(ShenandoahHeap* heap,
                            ShenandoahRegionIterator* iterator,
                            ShenandoahDeadRangeCounter* res,
                            bool concurrent) :
     WorkerTask("Shenandoah Free Dead Range"),
-    _sh(sh),
+    _heap(heap),
     _regions(iterator),
     _res(res),
     _concurrent(concurrent)

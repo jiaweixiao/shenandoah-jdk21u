@@ -341,6 +341,8 @@ void ShenandoahOldHeuristics::prepare_for_old_collections() {
         // by which time, the pinned region may no longer be pinned.
       if (!region->has_live()) {
         assert(!region->is_pinned(), "Pinned region should have live (pinned) objects.");
+        // [madv free] [profile marking income]
+        // Has been processed after final mark.
         region->make_trash_immediate();
         immediate_regions++;
         immediate_garbage += garbage;

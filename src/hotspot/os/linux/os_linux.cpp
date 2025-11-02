@@ -1462,6 +1462,48 @@ void os::free_page_frames(bool lazy, char *addr, size_t bytes) {
     ::madvise(addr, bytes, MADV_DONTNEED);
 }
 
+/**
+ * @brief Reads rswap page fault counters from a sysfs file.
+ *
+ * This function opens and parses /sys/kernel/mm/rswap/page_fault_counters
+ * to extract the last three values, which correspond to specific page
+ * table entry (PTE) fault types.
+ *
+ * @param pte_not_p  Pointer to a long where the 'pte_not_p' count will be stored.
+ * @param pte_p      Pointer to a long where the 'pte_p' count will be stored.
+ * @param pte_none   Pointer to a long where the 'pte_none' count will be stored.
+ */
+int os::kernel_mm_rswap_page_not_present(long *pte_not_p, long *pte_p, long *pte_none) {
+  char fname[] = "/sys/kernel/mm/rswap/page_fault_counters";
+
+  char stat[2048];
+  int statlen;
+  int count;
+  long ldummy;
+  FILE *fp;
+
+  fp = os::fopen(fname, "r");
+  if (fp == nullptr)
+    goto failed;
+  statlen = fread(stat, 1, 2047, fp);
+  stat[statlen] = '\0';
+  fclose(fp);
+
+
+  count = sscanf(stat,"%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld",
+                 &ldummy, &ldummy, &ldummy, &ldummy, &ldummy, &ldummy,
+                 &ldummy, &ldummy, &ldummy, &ldummy, &ldummy, &ldummy,
+                 pte_not_p, pte_p, pte_none);
+  if (count != 15)
+    goto failed;
+
+  // Success
+  return 0;
+
+failed:
+  return -1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // time support
 double os::elapsedVTime() {

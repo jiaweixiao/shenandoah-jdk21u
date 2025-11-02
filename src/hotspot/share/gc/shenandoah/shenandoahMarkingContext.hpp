@@ -27,6 +27,7 @@
 #define SHARE_GC_SHENANDOAH_SHENANDOAHMARKINGCONTEXT_HPP
 
 #include "gc/shared/markBitMap.hpp"
+#include "gc/shared/pageMarkBitMap.hpp"
 #include "gc/shenandoah/shenandoahMarkBitMap.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "memory/allocation.hpp"
@@ -45,6 +46,16 @@ private:
   ShenandoahMarkBitMap _mark_bit_map;
   MarkBitMap _mark_end_bit_map;
 
+  // [madv free] [profile marking income]
+  // Marking bitmap in 4KB page granularity.
+  // Used to profile newly found dead pages.
+  // When to mark: when a page is allocated and when a page has
+  //  live objects after GC tracing.
+  // When to clear: when a page is full of garbage after GC tracing.
+  // How to find newly found dead pages?
+  //  Before clear a dead page after GC tracing, check if the original value is set.
+  PageMarkBitMap _page_mark_bit_map;
+
   HeapWord** const _top_bitmaps;
   HeapWord** const _top_at_mark_starts_base;
   HeapWord** const _top_at_mark_starts;
@@ -54,6 +65,7 @@ private:
 public:
   ShenandoahMarkingContext(MemRegion heap_region, MemRegion bitmap_region, size_t num_regions);
   ShenandoahMarkingContext(MemRegion heap_region, MemRegion bitmap_region, MemRegion end_bitmap_region, size_t num_regions);
+  ShenandoahMarkingContext(MemRegion heap_region, MemRegion bitmap_region, MemRegion end_bitmap_region, MemRegion page_bitmap_region, size_t num_regions);
 
   /*
    * Marks the object. Returns true if the object has not been marked before and has
@@ -63,8 +75,13 @@ public:
   inline bool mark_strong(oop obj, bool& was_upgraded);
   inline bool mark_weak(oop obj);
 
+  inline bool mark_page(oop obj);
+  inline bool mark_page(HeapWord* addr);
+  inline void clear_page(HeapWord* addr);
+
   // Simple versions of marking accessors, to be used outside of marking (e.g. no possible concurrent updates)
   inline bool is_marked(oop) const;
+  inline bool is_marked_page(HeapWord* addr) const;
   inline bool is_marked_strong(oop obj) const;
   inline bool is_marked_weak(oop obj) const;
   inline bool is_marked_or_old(oop obj) const;

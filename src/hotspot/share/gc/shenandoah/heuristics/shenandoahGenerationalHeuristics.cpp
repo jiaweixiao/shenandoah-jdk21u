@@ -95,6 +95,8 @@ void ShenandoahGenerationalHeuristics::choose_collection_set(ShenandoahCollectio
         // We can recycle it right away and put it in the free set.
         immediate_regions++;
         immediate_garbage += garbage;
+        // [madv free] [profile marking income]
+        // Has been processed after final mark.
         region->make_trash_immediate();
       } else {
         bool is_candidate;

@@ -144,9 +144,9 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
   // Scan and free dead ranges of partial free region.
   if (UseProfileDeadPageInOld) {
-    // entry_free_dead_range();
+    // entry_post_mark_free_dead_range();
     // Debug with stw vmop
-    vmop_entry_free_dead_range();
+    vmop_entry_post_mark_free_dead_range();
   }
 
   // If the GC was cancelled before final mark, nothing happens on the safepoint. We are still
@@ -280,14 +280,14 @@ void ShenandoahConcurrentGC::vmop_entry_final_mark() {
   VMThread::execute(&op); // jump to entry_final_mark under safepoint
 }
 
-void ShenandoahConcurrentGC::vmop_entry_free_dead_range() {
+void ShenandoahConcurrentGC::vmop_entry_post_mark_free_dead_range() {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   TraceCollectorStats tcs(heap->monitoring_support()->stw_collection_counters());
   ShenandoahTimingsTracker timing(ShenandoahPhaseTimings::free_dead_range_gross);
 
   heap->try_inject_alloc_failure();
-  VM_ShenandoahFreeDeadRange op(this);
-  VMThread::execute(&op); // jump to entry_free_dead_range under safepoint
+  VM_ShenandoahPostMarkFreeDeadRange op(this);
+  VMThread::execute(&op); // jump to entry_post_mark_free_dead_range under safepoint
 }
 
 void ShenandoahConcurrentGC::vmop_entry_init_update_refs() {
@@ -345,32 +345,32 @@ void ShenandoahConcurrentGC::entry_final_mark() {
   op_final_mark();
 }
 
-void ShenandoahConcurrentGC::entry_pause_free_dead_range() {
-  static const char* msg = "Free dead range";
+void ShenandoahConcurrentGC::entry_pause_post_mark_free_dead_range() {
+  static const char* msg = "Post mark free dead range";
   ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::free_dead_range);
   EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(ShenandoahHeap::heap()->workers(),
                               ShenandoahWorkerPolicy::calc_workers_for_final_marking(),
-                              "free dead range");
+                              "post mark free dead range");
 
-  op_free_dead_range(false);
+  op_post_mark_free_dead_range(false);
 }
 
-void ShenandoahConcurrentGC::entry_free_dead_range() {
+void ShenandoahConcurrentGC::entry_post_mark_free_dead_range() {
   ShenandoahHeap* const heap = ShenandoahHeap::heap();
   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
 
-  static const char* msg = "Concurrent free dead range";
+  static const char* msg = "Concurrent post mark free dead range";
   ShenandoahConcurrentPhase gc_phase(msg, ShenandoahPhaseTimings::conc_free_dead_range);
   EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(heap->workers(),
                               ShenandoahWorkerPolicy::calc_workers_for_free_dead_range(),
-                              "concurrent free dead range");
+                              "concurrent post mark free dead range");
 
   heap->try_inject_alloc_failure();
-  op_free_dead_range(true);
+  op_post_mark_free_dead_range(true);
 }
 
 void ShenandoahConcurrentGC::entry_init_update_refs() {
@@ -827,8 +827,8 @@ void ShenandoahConcurrentGC::op_final_mark() {
   }
 }
 
-void ShenandoahConcurrentGC::op_free_dead_range(bool concurrent) {
-  ShenandoahHeap::heap()->free_dead_range(concurrent);
+void ShenandoahConcurrentGC::op_post_mark_free_dead_range(bool concurrent) {
+  ShenandoahHeap::heap()->post_mark_free_dead_range(concurrent);
 }
 
 bool ShenandoahConcurrentGC::has_in_place_promotions(ShenandoahHeap* heap) {

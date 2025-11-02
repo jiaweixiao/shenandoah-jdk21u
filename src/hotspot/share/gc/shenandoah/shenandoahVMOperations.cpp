@@ -92,10 +92,10 @@ void VM_ShenandoahFinalMarkStartEvac::doit() {
   _gc->entry_final_mark();
 }
 
-void VM_ShenandoahFreeDeadRange::doit() {
+void VM_ShenandoahPostMarkFreeDeadRange::doit() {
   ShenandoahGCPauseMark mark(_gc_id, "Free Dead Range", SvcGCMarker::CONCURRENT);
   set_active_generation();
-  _gc->entry_pause_free_dead_range();
+  _gc->entry_pause_post_mark_free_dead_range();
 }
 
 void VM_ShenandoahFullGC::doit() {

@@ -311,7 +311,62 @@ jint ShenandoahHeap::initialize() {
       os::commit_memory_or_exit((char *) _end_bitmap_region.start(), bitmap_init_commit, bitmap_page_size, false,
                                 "Cannot commit end_bitmap memory");
     }
-    _marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap_region, _end_bitmap_region, _num_regions);
+
+    if (!UseProfileTraceIncome) {
+      _marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap_region,
+              _end_bitmap_region, _num_regions);
+    } else {
+      // [madv free] [profile marking income]
+      // We use a page_bitmaps to record dead pages found at previous GC
+      size_t page_bitmap_size_orig = PageMarkBitMap::compute_size(heap_rs.size());
+      size_t page_bitmap_size = align_up(page_bitmap_size_orig, bitmap_page_size);
+
+      size_t page_bitmap_bytes_per_region = reg_size_bytes / PageMarkBitMap::heap_map_factor();
+
+      guarantee(page_bitmap_bytes_per_region != 0,
+                "PageBitmap bytes per region should not be zero");
+      guarantee(is_power_of_2(page_bitmap_bytes_per_region),
+                "PageBitmap bytes per region should be power of two: " SIZE_FORMAT, page_bitmap_bytes_per_region);
+
+      size_t page_bitmap_regions_per_slice, page_bitmap_bytes_per_slice;
+      if (bitmap_page_size > page_bitmap_bytes_per_region) {
+        page_bitmap_regions_per_slice = bitmap_page_size / page_bitmap_bytes_per_region;
+        page_bitmap_bytes_per_slice = bitmap_page_size;
+      } else {
+        page_bitmap_regions_per_slice = 1;
+        page_bitmap_bytes_per_slice = page_bitmap_bytes_per_region;
+      }
+
+      guarantee(page_bitmap_regions_per_slice >= 1,
+                "Should have at least one region per slice: " SIZE_FORMAT,
+                page_bitmap_regions_per_slice);
+
+      guarantee(((page_bitmap_bytes_per_slice) % bitmap_page_size) == 0,
+                "Bitmap slices should be page-granular: bps = " SIZE_FORMAT ", page size = " SIZE_FORMAT,
+                page_bitmap_bytes_per_slice, bitmap_page_size);
+
+      ReservedSpace page_bitmap(page_bitmap_size, bitmap_page_size);
+      os::trace_page_sizes_for_requested_size("Page Mark Bitmap",
+                                              page_bitmap_size_orig,
+                                              page_bitmap.page_size(), bitmap_page_size,
+                                              page_bitmap.base(),
+                                              page_bitmap.size());
+      MemTracker::record_virtual_memory_type(page_bitmap.base(), mtGC);
+      _page_bitmap_region = MemRegion((HeapWord*) page_bitmap.base(),
+              page_bitmap.size() / HeapWordSize);
+
+      size_t page_bitmap_init_commit = page_bitmap_bytes_per_slice *
+        align_up(num_committed_regions, page_bitmap_regions_per_slice) / page_bitmap_regions_per_slice;
+      page_bitmap_init_commit = MIN2(page_bitmap_size, page_bitmap_init_commit);
+      bool _page_bitmap_region_special = page_bitmap.special();
+      if (!_page_bitmap_region_special) {
+        os::commit_memory_or_exit((char *) _page_bitmap_region.start(),
+                page_bitmap_init_commit, bitmap_page_size, false,
+                "Cannot commit page_bitmap memory");
+      }
+      _marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap_region,
+              _end_bitmap_region, _page_bitmap_region, _num_regions);
+    }
   }
 
   if (ShenandoahVerify) {
@@ -429,7 +484,7 @@ jint ShenandoahHeap::initialize() {
   // [gc breakdown][region majflt]
   // Init page status bitmap in kernel
   //
-  if (UseProfileRegionMajflt) {
+  if (UseProfileRegionMajflt && !UseMadvFree && !UseMadvFreePage && !UseMadvDontneed) {
     // adc advise region size is equal to 4KB page.
     log_info(gc,init)("Init bitmap [" PTR_FORMAT ", " PTR_FORMAT "], grain %dB",
             p2i(sh_rs.base()), p2i(sh_rs.base() + max_byte_size), 4096);
@@ -1311,11 +1366,11 @@ private:
   ShenandoahGCStatePropagator _propagator;
 };
 
-void ShenandoahHeap::free_dead_range(bool concurrent) {
+void ShenandoahHeap::post_mark_free_dead_range(bool concurrent) {
   ShenandoahRegionIterator regions;
   ShenandoahHeap *heap = ShenandoahHeap::heap();
-  ShenandoahDeadRangeCounter res(heap->marking_context(), heap->workers()->active_workers());
-  ShenandoahFreeDeadRangeTask task(this, &regions, &res, concurrent);
+  ShenandoahDeadRangeCounter res(heap, heap->marking_context(), heap->workers()->active_workers());
+  ShenandoahPostMarkFreeDeadRangeTask task(this, &regions, &res, concurrent);
   workers()->run_task(&task);
 }
 
@@ -1483,6 +1538,8 @@ size_t ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
     assert(region->is_humongous(), "expect correct humongous start or continuation");
     assert(!region->is_cset(), "Humongous region should not be in collection set");
 
+    // [madv free] [profile marking income]
+    // Has been processed after final mark.
     region->make_trash_immediate();
   }
   return required_regions;
@@ -2556,6 +2613,29 @@ void ShenandoahHeap::update_heap_region_states(bool concurrent) {
     assert_pinned_region_status();
   }
 
+  // [madv free] [profile marking income]
+  // Process consecutive dead pages in region
+  // Run with single thread
+  if (UseProfileDeadPageInOld) {
+    {
+      ShenandoahHeapLocker locker(lock());
+
+      static const char* msg = "Trash CSet free dead range";
+      ShenandoahPausePhase gc_phase(msg, ShenandoahPhaseTimings::free_dead_range);
+      ShenandoahGCPhase free_phase(ShenandoahPhaseTimings::free_dead_range);
+      ShenandoahDeadRangeCounter res(this, _marking_context, 1);
+      ShenandoahTrashCSetFreeDeadRangeClosure cl(_marking_context, &res);
+      cl.set_worker(0);
+
+      // Iterate all collection set regions
+      for (size_t index = 0; index < _num_regions; index++) {
+        if (_collection_set->is_in(index)) {
+          cl.heap_region_do(get_region(index));
+        }
+      }
+    }
+  }
+
   {
     ShenandoahGCPhase phase(concurrent ?
                             ShenandoahPhaseTimings::final_update_refs_trash_cset :
@@ -2570,7 +2650,15 @@ void ShenandoahHeap::final_update_refs_update_region_states() {
 }
 
 int ShenandoahHeap::set_alloc_range(uintptr_t addr, size_t bytes) {
-  if (UseSkipswapSharedMemory) {
+  if (UseMadvFree) {
+    if (UseProfileTraceIncome) {
+      size_t page_size = 4096;
+      for (uintptr_t i=addr; i < addr + bytes; i+=page_size) {
+        marking_context()->mark_page((HeapWord *)(i));
+      }
+    }
+    return 0;
+  } else if (UseSkipswapSharedMemory) {
     size_t page_size = 4096;
     uintptr_t base = (uintptr_t)_heap_region.start();
     // if (addr < base) {
@@ -2579,8 +2667,11 @@ int ShenandoahHeap::set_alloc_range(uintptr_t addr, size_t bytes) {
     // }
     size_t page_id = (addr - base) >> 12;
     size_t end = (addr + bytes - base + page_size - 1) >> 12;
+    // size_t page_id_stt = page_id;
     while (page_id < end) {
       _alloc_bitmap_shm[page_id] = 1;
+      // if (page_id -  page_id_stt > 0 && page_id < end - 1)
+      //   Copy::zero_to_bytes((void*)(base + (page_id << 12)), page_size);
       page_id += 1;
     }
     return 0;
@@ -2605,6 +2696,7 @@ int ShenandoahHeap::set_free_range(uintptr_t addr, size_t bytes) {
       if (_remote_bitmap_shm[page_id]) {
         _uninit_bitmap_shm[page_id] = 1;
       }
+      // Copy::zero_to_bytes((void*)(base + (page_id << 12)), page_size);
       page_id += 1;
     }
     return 0;
