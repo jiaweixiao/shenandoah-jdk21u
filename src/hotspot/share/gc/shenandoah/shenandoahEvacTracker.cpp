@@ -125,6 +125,17 @@ void ShenandoahEvacuationTracker::print_evacuations_on(outputStream* st,
   st->cr();
 }
 
+void ShenandoahEvacuationTracker::print_evacuations_on_short(outputStream* st,
+                                                       ShenandoahEvacuationStats* workers,
+                                                       ShenandoahEvacuationStats* mutators) {
+  st->print("Workers: ");
+  workers->print_on(st);
+  st->cr();
+  st->print("Mutators: ");
+  mutators->print_on(st);
+  st->cr();
+}
+
 class ShenandoahStatAggregator : public ThreadClosure {
 public:
   ShenandoahEvacuationStats* _target;

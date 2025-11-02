@@ -57,7 +57,11 @@ ShenandoahDegenGC::ShenandoahDegenGC(ShenandoahDegenPoint degen_point, Shenandoa
 }
 
 bool ShenandoahDegenGC::collect(GCCause::Cause cause) {
+  // [gc breakdown]
+  GCMajfltStats gc_majflt_stats;
+  gc_majflt_stats.start();
   vmop_degenerated();
+  gc_majflt_stats.end_and_log("degenerated gc");
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (heap->mode()->is_generational()) {
     bool is_bootstrap_gc = heap->old_generation()->is_bootstrapping();

@@ -564,6 +564,8 @@
          "to prevent starvation of the old collector. Setting this to "     \
          "0 will allow back to back young collections to run during old "   \
          "collections.")                                                    \
+  product(bool, ShenandoahOnlyLogEvacStats, false,                          \
+          "Only log evacuation in gclog with stats tag")                    \
   // end of GC_SHENANDOAH_FLAGS
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

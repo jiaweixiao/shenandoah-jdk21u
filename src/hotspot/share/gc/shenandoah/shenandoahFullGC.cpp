@@ -76,7 +76,11 @@ ShenandoahFullGC::~ShenandoahFullGC() {
 }
 
 bool ShenandoahFullGC::collect(GCCause::Cause cause) {
+  // [gc breakdown]
+  GCMajfltStats gc_majflt_stats;
+  gc_majflt_stats.start();
   vmop_entry_full(cause);
+  gc_majflt_stats.end_and_log("full gc");
   // Always success
   return true;
 }

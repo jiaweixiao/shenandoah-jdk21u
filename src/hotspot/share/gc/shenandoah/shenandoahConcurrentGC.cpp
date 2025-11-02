@@ -113,7 +113,11 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   entry_reset();
 
   // Start initial mark under STW
+  // [gc breakdown]
+  GCMajfltStats gc_majflt_stats;
+  gc_majflt_stats.start();
   vmop_entry_init_mark();
+  gc_majflt_stats.end_and_log("init mark");
 
   {
     ShenandoahBreakpointMarkScope breakpoint_mark_scope(cause);
@@ -140,7 +144,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
   }
 
   // Complete marking under STW, and start evacuation
+  // [gc breakdown]
+  gc_majflt_stats.start();
   vmop_entry_final_mark();
+  gc_majflt_stats.end_and_log("final mark");
 
   // Scan and free dead ranges of partial free region.
   if (UseProfileDeadPageInOld) {
@@ -206,7 +213,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
     // Perform update-refs phase.
     if (ShenandoahVerify || ShenandoahPacing) {
+      // [gc breakdown]
+      gc_majflt_stats.start();
       vmop_entry_init_update_refs();
+      gc_majflt_stats.end_and_log("init update refs");
     }
 
     entry_update_refs();
@@ -220,7 +230,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
       return false;
     }
 
+    // [gc breakdown]
+    gc_majflt_stats.start();
     vmop_entry_final_update_refs();
+    gc_majflt_stats.end_and_log("final update refs");
 
     // Update references freed up collection set, kick the cleanup to reclaim the space.
     entry_cleanup_complete();
@@ -242,7 +255,10 @@ bool ShenandoahConcurrentGC::collect(GCCause::Cause cause) {
 
     // At this point, the cycle is effectively complete. If the cycle has been cancelled here,
     // the control thread will detect it on its next iteration and run a degenerated young cycle.
+    // [gc breakdown]
+    gc_majflt_stats.start();
     vmop_entry_final_roots();
+    gc_majflt_stats.end_and_log("final roots");
     _abbreviated = true;
   }
 

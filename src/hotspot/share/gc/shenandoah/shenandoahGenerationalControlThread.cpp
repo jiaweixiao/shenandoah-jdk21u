@@ -348,11 +348,16 @@ void ShenandoahGenerationalControlThread::process_phase_timings() const {
     if (lt.is_enabled()) {
       ResourceMark rm;
       LogStream ls(lt);
-      _heap->phase_timings()->print_cycle_on(&ls);
-      evac_tracker->print_evacuations_on(&ls, &evac_stats.workers,
-                                              &evac_stats.mutators);
-      if (ShenandoahPacing) {
-        _heap->pacer()->print_cycle_on(&ls);
+      if (ShenandoahOnlyLogEvacStats) {
+        evac_tracker->print_evacuations_on_short(&ls, &evac_stats.workers,
+                                                      &evac_stats.mutators);
+      } else {
+        _heap->phase_timings()->print_cycle_on(&ls);
+        evac_tracker->print_evacuations_on(&ls, &evac_stats.workers,
+                                                &evac_stats.mutators);
+        if (ShenandoahPacing) {
+          _heap->pacer()->print_cycle_on(&ls);
+        }
       }
     }
   }
@@ -554,7 +559,7 @@ void ShenandoahGenerationalControlThread::service_concurrent_cycle(ShenandoahGen
 
   assert(!generation->is_old(), "Old GC takes a different control path");
 
-  ShenandoahConcurrentGC gc(generation, do_old_gc_bootstrap);
+  ShenandoahConcurrentGC gc(generation, do_old_gc_bootstrap);os::dump_accum_thread_majflt_minflt_and_cputime("beforeConcCycle");
   if (gc.collect(cause)) {
     // Cycle is complete
     _heap->notify_gc_progress();
@@ -594,6 +599,7 @@ void ShenandoahGenerationalControlThread::service_concurrent_cycle(ShenandoahGen
     }
   }
   _heap->log_heap_status(msg);
+  os::dump_accum_thread_majflt_minflt_and_cputime("afterConcCycle");
 }
 
 bool ShenandoahGenerationalControlThread::check_cancellation_or_degen(ShenandoahGC::ShenandoahDegenPoint point) {
