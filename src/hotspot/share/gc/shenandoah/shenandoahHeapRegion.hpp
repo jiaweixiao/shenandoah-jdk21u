@@ -272,6 +272,7 @@ private:
   size_t _trashed_count;
   size_t _deadpage_count;
   size_t _deadrange_count;
+  size_t _remote_deadpage_count;
   size_t _free_emptyregion_cycle;
   size_t _scan_deadrange_cycle;
   size_t _free_deadrange_cycle;
@@ -508,11 +509,13 @@ public:
   inline size_t free_deadrange_cycle() { return _free_deadrange_cycle; }
   inline size_t deadpage_count() { return _deadpage_count; }
   inline size_t deadrange_count() { return _deadrange_count; }
+  inline size_t remote_deadpage_count() { return _remote_deadpage_count; }
   inline size_t free_emptyregion_cycle() { return _free_emptyregion_cycle; }
   inline void add_scan_deadrange_cycle(size_t c) { _scan_deadrange_cycle += c; }
   inline void add_free_deadrange_cycle(size_t c) { _free_deadrange_cycle += c; }
   inline void add_deadrange_count(size_t c) { _deadrange_count += c; }
   inline void add_deadpage_count(size_t c) { _deadpage_count += c; }
+  inline void add_remote_deadpage_count(size_t c) { _remote_deadpage_count += c; }
 
 private:
   void decrement_humongous_waste() const;

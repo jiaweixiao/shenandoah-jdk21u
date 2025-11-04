@@ -86,6 +86,7 @@ ShenandoahHeapRegion::ShenandoahHeapRegion(HeapWord* start, size_t index, bool c
   _trashed_count(0),
   _deadpage_count(0),
   _deadrange_count(0),
+  _remote_deadpage_count(0),
   _free_emptyregion_cycle(0),
   _scan_deadrange_cycle(0),
   _free_deadrange_cycle(0)

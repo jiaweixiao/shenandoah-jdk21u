@@ -223,9 +223,40 @@ size_t ShenandoahDeadRangeCounter::account_dead_range(uint worker_id, Shenandoah
       os::free_page_frames(false,
         (char*)(dead_page_start << 12), dead_pages << 12);
     } else if (UseProfileRegionMajflt) {
-      if(_heap->set_free_range(dead_page_start << 12, dead_pages << 12)) {
-        log_info(gc)("[account_dead_range] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, (dead_page_start + dead_pages) << 12);
-        os::abort();
+      if (UseProfileTraceIncome && UseSkipswapSharedMemory) {
+        // Only for newly found consecutive dead pages
+        uintptr_t i = dead_page_start;
+        while (i < dead_page_start + dead_pages) {
+          if (_ctx->is_marked_page((HeapWord*)(i << 12))) {
+            // Found a live page at prev GC
+            uintptr_t stt_i = i;
+            uintptr_t j = i;
+            while (j < dead_page_start + dead_pages &&
+                  _ctx->is_marked_page((HeapWord*)(j << 12))) {
+              j++;
+            }
+            uintptr_t end_i = j - 1;
+            size_t sum_pages = end_i - stt_i + 1;
+
+            newly_dead_pages += sum_pages;
+            for (uintptr_t x=stt_i; x <= end_i; x++) {
+              _ctx->clear_page((HeapWord*)(x << 12));
+              if (_heap->is_remote_page(x << 12)) {
+                r->add_remote_deadpage_count(1);
+              }
+            }
+            inc_counter(worker_id, sum_pages);
+            _heap->set_free_range(stt_i << 12, sum_pages << 12);
+            i = end_i + 1;
+          } else {
+            i++; // move to next
+          }
+        }
+      } else {
+        if(_heap->set_free_range(dead_page_start << 12, dead_pages << 12)) {
+          log_info(gc)("[account_dead_range] fails adc_advise_free_range, stt: " PTR_FORMAT " end: " PTR_FORMAT, dead_page_start << 12, (dead_page_start + dead_pages) << 12);
+          os::abort();
+        }
       }
     }
   }
@@ -367,12 +398,10 @@ void ShenandoahPostCompactFreeDeadRangeClosure::heap_region_do(ShenandoahHeapReg
     if (r->is_regular() && r->used() == 0) {
       // Reclaim empty regular regions
       _res->account_dead_ranges_regular(_worker_id, r, r->bottom(), r->end());
-    } else {
+    } else if (r->used() > 0 && r->free() >= 4096) {
+      // Collection set only has regular regions
       // Free [top, end)
-      if (r->used() > 0 && r->free() >= 4096) {
-        // Collection set only has regular regions
-        _res->account_dead_ranges_regular(_worker_id, r, r->top(), r->end());
-      }
+      _res->account_dead_ranges_regular(_worker_id, r, r->top(), r->end());
     }
   }
 }
@@ -396,7 +425,8 @@ void ShenandoahPostMarkFreeDeadRangeTask::do_work(uint worker_id) {
     // [madv free] [profile marking income]
     // How about FREE affiliation? We skip it since the a YOUNG_GENERATION region
     // has no live after Young marking is still YOUNG_GENERATION.
-    if (r->affiliation() == active_type || is_global)
+    if ((!is_global && r->affiliation() == active_type) ||
+        (is_global && r->affiliation() != FREE))
       cl.heap_region_do(r);
     if (_heap->check_cancelled_gc_and_yield(_concurrent)) {
       return;

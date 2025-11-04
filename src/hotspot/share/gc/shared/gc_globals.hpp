@@ -117,7 +117,9 @@
                                                                             \
   product(bool, UseProfileTraceIncome, false,                               \
           "Profile the income of Young/Old GC tracing of dead pages in"     \
-          "regions with live objects")                                      \
+          "regions with live objects. Should filter page without pte."      \
+          "Need help of shared memory with kernel for Skipswap."            \
+          "Need help of kenrel with profiling for Madvise.")                \
                                                                             \
   product(bool, UseProfileDeadPageInOld, false,                             \
           "Count # of dead pages in old after CM but before Mixed GC")      \

@@ -2295,6 +2295,7 @@ void ShenandoahHeap::stop() {
 
   // Dump region trashed count
   size_t count = 0, deadrange_count = 0, deadpage_count = 0;
+  size_t remote_deadpage_count = 0;
   size_t free_empty_cycle = 0, scan_dead_cycle = 0, free_dead_cycle = 0;
   for (size_t i = 0; i < num_regions(); i++) {
     count += get_region(i)->trashed_count();
@@ -2303,10 +2304,12 @@ void ShenandoahHeap::stop() {
     scan_dead_cycle += get_region(i)->scan_deadrange_cycle();
     free_dead_cycle += get_region(i)->free_deadrange_cycle();
     deadpage_count += get_region(i)->deadpage_count();
+    remote_deadpage_count += get_region(i)->remote_deadpage_count();
   }
   log_info(gc)("Cost of Empty Region: avg %.2fus, count %lu", free_empty_cycle/2.4/1000/count, count);
   log_info(gc)("Cost of Dead Range: avg scan %.2fus, avg free %.2fus, count %lu", scan_dead_cycle/2.4/1000/deadrange_count, free_dead_cycle/2.4/1000/deadrange_count, deadrange_count);
   log_info(gc)("Sum of dead pages: %lu", deadpage_count);
+  log_info(gc)("Sum of remote dead pages: %lu", remote_deadpage_count);
 }
 
 void ShenandoahHeap::stw_unload_classes(bool full_gc) {
@@ -2672,6 +2675,9 @@ int ShenandoahHeap::set_alloc_range(uintptr_t addr, size_t bytes) {
       _alloc_bitmap_shm[page_id] = 1;
       // if (page_id -  page_id_stt > 0 && page_id < end - 1)
       //   Copy::zero_to_bytes((void*)(base + (page_id << 12)), page_size);
+      if (UseProfileTraceIncome) {
+        marking_context()->mark_page((HeapWord *)(base + (page_id << 12)));
+      }
       page_id += 1;
     }
     return 0;
@@ -2703,6 +2709,13 @@ int ShenandoahHeap::set_free_range(uintptr_t addr, size_t bytes) {
   } else {
     return os::adc_advise_free_range(addr, bytes);
   }
+}
+
+bool ShenandoahHeap::is_remote_page(uintptr_t addr) {
+  size_t page_size = 4096;
+  uintptr_t base = (uintptr_t)_heap_region.start();
+  size_t page_id = (addr - base + page_size - 1) >> 12;
+  return _remote_bitmap_shm[page_id];
 }
 
 void ShenandoahHeap::rebuild_free_set(bool concurrent) {
