@@ -353,12 +353,6 @@ void Handshake::execute(HandshakeClosure* hs_cl) {
   VMThread::execute(&handshake);
 }
 
-void Handshake::execute_in_vm(HandshakeClosure* hs_cl) {
-  HandshakeOperation cto(hs_cl, nullptr, Thread::current());
-  VM_HandshakeAllThreads handshake(&cto, true);
-  VMThread::execute(&handshake);
-}
-
 void Handshake::execute(HandshakeClosure* hs_cl, JavaThread* target) {
   // tlh == nullptr means we rely on a ThreadsListHandle somewhere
   // in the caller's context (and we sanity check for that).

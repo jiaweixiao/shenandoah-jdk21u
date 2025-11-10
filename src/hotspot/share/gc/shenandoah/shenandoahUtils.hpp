@@ -181,6 +181,8 @@ public:
 
     VM_Operation::VMOp_Type type = vm_op->type();
     return type == VM_Operation::VMOp_ShenandoahInitMark ||
+           (ShenandoahUseSTWGC && type == VM_Operation::VMOp_ShenandoahMark) ||
+           (ShenandoahUseSTWGC && type == VM_Operation::VMOp_ShenandoahEvacuation) ||
            type == VM_Operation::VMOp_ShenandoahFinalMarkStartEvac ||
            type == VM_Operation::VMOp_ShenandoahInitUpdateRefs ||
            type == VM_Operation::VMOp_ShenandoahFinalUpdateRefs ||
