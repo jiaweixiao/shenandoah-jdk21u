@@ -110,29 +110,33 @@
                                                                             \
   /* gc */                                                                  \
   product(bool, UseProfileRegionMajflt, false,                              \
-          "Enable profile region majflt")                                   \
-                                                                            \
-  product(bool, UseSkipswapSharedMemory, false,                             \
-          "Enable shared memory between kernel and JVM")                    \
-                                                                            \
-  product(bool, UseProfileDeadPageInOld, false,                             \
-          "Count # of dead pages in old after CM but before Mixed GC")      \
-                                                                            \
-  product(bool, UseFreeEmptyRegion, false,                                  \
-          "Free empty regions.")                                            \
-                                                                            \
-  product(bool, UseFreeDeadPage, false,                                     \
-          "Free free pages after CM of genshen")                            \
+          "Free free regions with Skipswap")                                \
                                                                             \
   product(bool, UseMadvFree, false,                                         \
           "Free free regions with madvise MADV_FREE")                       \
                                                                             \
   product(uint, UseMadvFreePage, 0,                                         \
-          "Free free regions with madvise MADV_FREE in # page               \
-           granularity")                                                    \
+          "Free free regions with madvise MADV_FREE in page granularity")   \
                                                                             \
   product(bool, UseMadvDontneed, false,                                     \
           "Free free regions with madvise MADV_DONTNEED")                   \
+                                                                            \
+  product(bool, UseSkipswapSharedMemory, false,                             \
+          "Enable shared memory between kernel and JVM")                    \
+                                                                            \
+  product(bool, UseProfileDeadPageInOld, false,                             \
+          "Scan dead pages after Young/Old concurrent/degen marking "       \
+          "and Full GC")                                                    \
+                                                                            \
+  product(bool, UseFreeEmptyRegion, false,                                  \
+          "Free empty regions. (Deprecated)")                               \
+                                                                            \
+  product(bool, UseFreeDeadPage, false,                                     \
+          "Free free pages after CM of genshen")                            \
+                                                                            \
+  product(bool, UseFreeAnnotation, false,                                   \
+          "Enable free annotation in java program to mark free primitive "  \
+          "array. E.g. java.lang.reflect.Array.reclaim(arr)")               \
                                                                             \
   product(bool, UseSerialGC, false,                                         \
           "Use the Serial garbage collector")                               \

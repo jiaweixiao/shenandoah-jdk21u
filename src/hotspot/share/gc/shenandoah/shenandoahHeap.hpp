@@ -510,6 +510,7 @@ public:
   volatile bool* get_remote_bitmap_shm() { return _remote_bitmap_shm; };
   int set_alloc_range(uintptr_t addr, size_t bytes);
   int set_free_range(uintptr_t addr, size_t bytes);
+  int set_free_range_profiling(uintptr_t addr, size_t bytes);
   size_t get_shm_size_bytes() { return _bitmap_shm_size_bytes; };
   void rebuild_free_set(bool concurrent);
   void notify_gc_progress();

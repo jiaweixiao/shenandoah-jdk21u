@@ -3375,6 +3375,27 @@ JVM_ENTRY(void, JVM_SetPrimitiveArrayElement(JNIEnv *env, jobject arr, jint inde
 JVM_END
 
 
+JVM_ENTRY(void, JVM_ReclaimPrimitiveArray(JNIEnv *env, jobject arr))
+  if (UseFreeAnnotation && Universe::heap()->kind() == CollectedHeap::Shenandoah) {
+    // // DEBUG
+    // // is_array() and is_typeArray() in check_array() access the object instance
+    // by reading the klass pointer from the object header.
+    arrayOop a = check_array(env, arr, true, CHECK);
+    Reflection::array_reclaim(a, CHECK);
+  }
+JVM_END
+
+JVM_ENTRY(void, JVM_ReclaimPrimitiveArrayLen(JNIEnv *env, jobject arr, jint length))
+  if (UseFreeAnnotation && Universe::heap()->kind() == CollectedHeap::Shenandoah) {
+    // // DEBUG
+    // // is_array() and is_typeArray() in check_array() access the object instance
+    // by reading the klass pointer from the object header.
+    // arrayOop a = check_array(env, arr, true, CHECK);
+    Reflection::array_reclaim_len(arrayOop(JNIHandles::resolve_non_null(arr)), length, CHECK);
+  }
+JVM_END
+
+
 JVM_ENTRY(jobject, JVM_NewArray(JNIEnv *env, jclass eltClass, jint length))
   JvmtiVMObjectAllocEventCollector oam;
   oop element_mirror = JNIHandles::resolve(eltClass);

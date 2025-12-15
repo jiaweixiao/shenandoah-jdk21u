@@ -74,6 +74,10 @@ class Reflection: public AllStatic {
   static BasicType array_get(jvalue* value, arrayOop a, int index, TRAPS);
   static void      array_set(jvalue* value, arrayOop a, int index, BasicType value_type, TRAPS);
 
+  // Relective array reclaim.
+  static void      array_reclaim(arrayOop a, TRAPS);
+  static void      array_reclaim_len(arrayOop a, int length, TRAPS);
+
   // Object creation
   static arrayOop reflect_new_array(oop element_mirror, jint length, TRAPS);
   static arrayOop reflect_new_multi_array(oop element_mirror, typeArrayOop dimensions, TRAPS);

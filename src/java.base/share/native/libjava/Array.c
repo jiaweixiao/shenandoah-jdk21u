@@ -190,6 +190,18 @@ Java_java_lang_reflect_Array_setDouble(JNIEnv *env, jclass ignore,
     JVM_SetPrimitiveArrayElement(env, arr, index, v, JVM_T_DOUBLE);
 }
 
+JNIEXPORT void JNICALL
+Java_java_lang_reflect_Array_reclaim(JNIEnv *env, jclass ignore, jobject arr)
+{
+    JVM_ReclaimPrimitiveArray(env, arr);
+}
+
+JNIEXPORT void JNICALL
+Java_java_lang_reflect_Array_reclaimLen(JNIEnv *env, jclass ignore, jobject arr, jint length)
+{
+    JVM_ReclaimPrimitiveArrayLen(env, arr, length);
+}
+
 /*
  *
  */

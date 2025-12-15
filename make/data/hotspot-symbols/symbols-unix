@@ -187,6 +187,8 @@ JVM_RawMonitorCreate
 JVM_RawMonitorDestroy
 JVM_RawMonitorEnter
 JVM_RawMonitorExit
+JVM_ReclaimPrimitiveArray
+JVM_ReclaimPrimitiveArrayLen
 JVM_ReferenceClear
 JVM_ReferenceRefersTo
 JVM_RegisterContinuationMethods

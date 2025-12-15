@@ -321,6 +321,89 @@ void Reflection::array_set(jvalue* value, arrayOop a, int index, BasicType value
   }
 }
 
+void Reflection::array_reclaim(arrayOop a, TRAPS) {
+  // get base address of first element
+  BasicType type = TypeArrayKlass::cast(a->klass())->element_type();
+  uintptr_t elem_base = (uintptr_t)(a->base(type));
+  size_t len_in_bytes = a->length() * type2aelembytes(type);
+
+  // Align address and size to 4KB page
+  uintptr_t elem_base_aligned = align_up(elem_base, 4096);
+  uintptr_t end_addr = elem_base + len_in_bytes;
+  if (elem_base_aligned + 4096 >= end_addr)
+    return;
+  size_t len_in_bytes_aligned = align_down(end_addr - elem_base_aligned, 4096);
+
+  // Inform kernel that the data is clean
+  // // DEBUG
+  // Copy::zero_to_bytes((char*)(elem_base_aligned), len_in_bytes_aligned);
+  if (UseMadvFree) {
+    os::free_page_frames(true,
+      (char*)(elem_base_aligned), len_in_bytes_aligned);
+  } else if (UseMadvDontneed) {
+    os::free_page_frames(false,
+      (char*)(elem_base_aligned), len_in_bytes_aligned);
+  } else if (UseProfileRegionMajflt) {
+    size_t remotes = 0;
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+    if(heap->set_free_range_profiling(elem_base_aligned, len_in_bytes_aligned, &remotes)) {
+      log_info(gc)("[JVM_Reclaim] fails adc_advise_free_range, stt: " PTR_FORMAT
+                   " len: " SIZE_FORMAT, elem_base_aligned, len_in_bytes_aligned);
+      os::abort();
+    }
+
+    uintptr_t arr_addr = cast_from_oop<uintptr_t>(a);
+    ShenandoahHeapRegion* region = heap->heap_region_containing((void*)arr_addr);
+    const char* aff_name = region->affiliation_name();
+    log_info(gc)("Free remote pages of %s, %ld of %ld", aff_name, remotes, len_in_bytes_aligned >> 12);
+  }
+
+  log_info(gc)("JVM_ReclaimPrimitiveArray %s, free %ld * 4KB", type2name(type), len_in_bytes_aligned >> 12);
+}
+
+void Reflection::array_reclaim_len(arrayOop a, int length, TRAPS) {
+  // get base address of first element without accessing the object header.
+  // // DEBUG
+  // BasicType type = TypeArrayKlass::cast(a->klass())->element_type();
+  // uintptr_t elem_base = (uintptr_t)(a->base(type));
+  // size_t len_in_bytes = a->length() * type2aelembytes(type);
+  uintptr_t elem_base = (uintptr_t)(a->base(T_BYTE));
+  size_t len_in_bytes = length * type2aelembytes(T_BYTE);
+
+  // Align address and size to 4KB page
+  uintptr_t elem_base_aligned = align_up(elem_base, 4096);
+  uintptr_t end_addr = elem_base + len_in_bytes;
+  if (elem_base_aligned + 4096 >= end_addr)
+    return;
+  size_t len_in_bytes_aligned = align_down(end_addr - elem_base_aligned, 4096);
+
+  // Inform kernel that the data is clean
+  // // DEBUG
+  // Copy::zero_to_bytes((char*)(elem_base_aligned), len_in_bytes_aligned);
+  if (UseMadvFree) {
+    os::free_page_frames(true,
+      (char*)(elem_base_aligned), len_in_bytes_aligned);
+  } else if (UseMadvDontneed) {
+    os::free_page_frames(false,
+      (char*)(elem_base_aligned), len_in_bytes_aligned);
+  } else if (UseProfileRegionMajflt) {
+    size_t remotes = 0;
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+    if(heap->set_free_range_profiling(elem_base_aligned, len_in_bytes_aligned, &remotes)) {
+      log_info(gc)("[JVM_Reclaim_len] fails adc_advise_free_range, stt: " PTR_FORMAT
+                   " len: " SIZE_FORMAT, elem_base_aligned, len_in_bytes_aligned);
+      os::abort();
+    }
+
+    uintptr_t arr_addr = cast_from_oop<uintptr_t>(a);
+    ShenandoahHeapRegion* region = heap->heap_region_containing((void*)arr_addr);
+    const char* affiliation_name = region->affiliation_name();
+    log_info(gc)("Free remote pages of %s, %ld of %ld", affiliation_name, remotes, len_in_bytes_aligned >> 12);
+  }
+
+  log_info(gc)("JVM_ReclaimPrimitiveArrayLen, free %ld * 4KB", len_in_bytes_aligned >> 12);
+}
+
 static Klass* basic_type_mirror_to_arrayklass(oop basic_type_mirror, TRAPS) {
   assert(java_lang_Class::is_primitive(basic_type_mirror), "just checking");
   BasicType type = java_lang_Class::primitive_type(basic_type_mirror);
