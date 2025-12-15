@@ -2711,6 +2711,36 @@ int ShenandoahHeap::set_free_range(uintptr_t addr, size_t bytes) {
   }
 }
 
+int ShenandoahHeap::set_free_range_profiling(uintptr_t addr, size_t bytes) {
+  if (UseSkipswapSharedMemory) {
+    size_t page_size = 4096;
+    size_t sum_pages = 0;
+    size_t remote_pages = 0;
+    uintptr_t base = (uintptr_t)_heap_region.start();
+    // if (addr < base) {
+    //   log_info(gc)("set_free_range: addr < heap base");
+    //   os::abort();
+    // }
+    size_t page_id = (addr - base + page_size - 1) >> 12;
+    size_t end = (addr + bytes - base) >> 12;
+    while (page_id < end) {
+      _alloc_bitmap_shm[page_id] = 0;
+      // We only make a remote page uninit
+      if (_remote_bitmap_shm[page_id]) {
+        _uninit_bitmap_shm[page_id] = 1;
+        remote_pages += 1;
+      }
+      sum_pages += 1;
+      // Copy::zero_to_bytes((void*)(base + (page_id << 12)), page_size);
+      page_id += 1;
+    }
+    log_info(gc)("Free remote pages %ld of %ld", remote_pages, sum_pages);
+    return 0;
+  } else {
+    return os::adc_advise_free_range(addr, bytes);
+  }
+}
+
 bool ShenandoahHeap::is_remote_page(uintptr_t addr) {
   size_t page_size = 4096;
   uintptr_t base = (uintptr_t)_heap_region.start();

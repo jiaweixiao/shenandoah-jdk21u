@@ -391,6 +391,9 @@ JNIEXPORT void JNICALL
 JVM_SetPrimitiveArrayElement(JNIEnv *env, jobject arr, jint index, jvalue v,
                              unsigned char vCode);
 
+JNIEXPORT void JNICALL
+JVM_ReclaimPrimitiveArray(JNIEnv *env, jobject arr);
+
 JNIEXPORT jobject JNICALL
 JVM_NewArray(JNIEnv *env, jclass eltClass, jint length);
 

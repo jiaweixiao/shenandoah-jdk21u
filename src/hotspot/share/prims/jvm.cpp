@@ -3375,6 +3375,14 @@ JVM_ENTRY(void, JVM_SetPrimitiveArrayElement(JNIEnv *env, jobject arr, jint inde
 JVM_END
 
 
+JVM_ENTRY(void, JVM_ReclaimPrimitiveArray(JNIEnv *env, jobject arr))
+  if (UseFreeAnnotation && Universe::heap()->kind() == CollectedHeap::Shenandoah) {
+    arrayOop a = check_array(env, arr, true, CHECK);
+    Reflection::array_reclaim(a, CHECK);
+  }
+JVM_END
+
+
 JVM_ENTRY(jobject, JVM_NewArray(JNIEnv *env, jclass eltClass, jint length))
   JvmtiVMObjectAllocEventCollector oam;
   oop element_mirror = JNIHandles::resolve(eltClass);

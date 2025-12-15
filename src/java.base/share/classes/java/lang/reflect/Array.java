@@ -477,6 +477,19 @@ class Array {
     public static native void setDouble(Object array, int index, double d)
         throws IllegalArgumentException, ArrayIndexOutOfBoundsException;
 
+    /**
+     * Reclaim the values of the the specified {@code primitive} array.
+     * @param array the primitive array
+     * @throws    NullPointerException If the specified object argument
+     * is null
+     * @throws    IllegalArgumentException If the specified object argument
+     * is not an array, or if the specified value cannot be converted
+     * to the underlying array's component type by an identity or a
+     * primitive widening conversion
+     */
+    public static native void reclaim(Object array)
+        throws IllegalArgumentException;
+
     /*
      * Private
      */
